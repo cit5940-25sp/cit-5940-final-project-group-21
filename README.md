@@ -1,16 +1,47 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/nK589Lr0)
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=18941656&assignment_repo_type=AssignmentRepo)
-# Final Project Template
+# Movie Name Game Project
 
-This is an example of a project directory for you to start working from. Please use it!
+## Project Overview
+This project is a Java implementation of the Movie Name Game, inspired by the game hosted at [cinenerdle2.app](https://www.cinenerdle2.app/). Our implementation uses movie data from TMDB to create an interactive game where players connect movies through shared attributes like actors, directors, writers, cinematographers, or composers.
 
+## Team Members
+- Member 1: Xinyao Zhao - Team Lead
+- Member 2: Tianyue Zhou - Design Lead
+- Member 3: Boying Niu - Testing Lead
 
-```text
-|
-|--- .gitignore # lists all of the junk that might exist in your folder that should not be committed
-|--- README.md # explanation for the purpose of your repo
-|--- src
-    |----- *.java (source code files)
-|--- test
-    |----- *Test.java (unit test files)
-```
+## Game Description
+The Movie Name Game is a turn-based game where:
+- Players take turns naming movies connected to the previously named movie
+- Connections can be shared actors, directors, writers, cinematographers, or composers
+- Each movie can only be used once in a game
+- Any specific connection can only be used up to three times
+- Players have 30 seconds to make their move
+- Win conditions are established before the game starts (default is genre-based)
+
+## Technical Features
+- Implementation of Model-View-Controller (MVC) design pattern
+- Implementation of [Second Design Pattern Name] design pattern
+- Advanced data indexing system for efficient movie lookups
+- Real-time autocomplete functionality
+- Text-based user interface
+
+## Project Structure
+- `/src`: Source code
+  - `/model`: Data models and business logic
+  - `/view`: User interface components
+  - `/controller`: Application control flow
+- `/test`: Test cases and testing utilities
+- `/docs`: Design documents and diagrams
+
+## Design Decisions
+- MVC Architecture: Separates data representation from user interaction
+- Data Indexing: Optimized for quick movie title search and relationship lookups
+- [Second Design Pattern]: Used for [specific functionality]
+
+## Implementation Plan
+1. Data structure design and implementation
+2. Core game logic development
+3. User interface implementation
+4. Testing and refinement
+5. Optional feature integration
+
+## Running the Application
