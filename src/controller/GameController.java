@@ -1,10 +1,11 @@
-package controller;
+package main.controller;
 
-import model.GameState;
-import model.Movie;
-import model.MovieDatabase;
-import model.Player;
-import view.GameView;
+import main.model.GameState;
+import main.model.Movie;
+import main.model.Player;
+import main.model.MovieDatabase;
+
+import main.view.GameView;
 
 import java.io.IOException;
 import java.util.List;
@@ -99,8 +100,6 @@ public class GameController {
      */
     private void startGame() {
         Movie startingMovie = movieDatabase.getRandomMovie();
-        gameState.startGame(startingMovie);
-
         gameView.updateGameState(gameState);
         gameView.showMessage("Game started with movie: " + startingMovie.getTitle());
 
@@ -136,6 +135,16 @@ public class GameController {
             gameView.showError("Invalid selection. Please try again.");
         }
     }
+    // new method
+    public void setPlayerWinConditionByPerson(Player player, String role, String name, int count) {
+        main.model.Player.WinCondition winCond = new Player.GenreWinCondition.PersonWinCondition(role, name, count);
+        gameState.setPlayerWinCondition(player, winCond);
+
+        if (gameState.getCurrentState() == GameState.State.PLAYING) {
+            startGame();
+        }
+    }
+
 
     /**
      * Start the turn timer

@@ -1,9 +1,9 @@
-package view;
+package main.view;
 
-import model.GameState;
-import model.Movie;
-import model.Player;
-import controller.GameController;
+import main.model.GameState;
+import main.model.Movie;
+import main.model.Player;
+import main.controller.GameController;
 
 import java.util.List;
 import java.util.Set;
@@ -86,35 +86,83 @@ public class GameView {
     public void showWinConditionSelection(Player player, Set<String> genres) {
         System.out.println("\n--- Win Condition for " + player.getName() + " ---");
 
-        // Display available genres
-        System.out.println("Available genres:");
-        int i = 1;
-        String[] genreArray = genres.toArray(new String[0]);
-        for (String genre : genreArray) {
-            System.out.println(i + ". " + genre);
-            i++;
-        }
+        System.out.println("Select win condition type:");
+        System.out.println("1. Genre (e.g., 3 Horror movies)");
+        System.out.println("2. Person (e.g., 3 movies with actor X)");
+        System.out.print("Enter your choice (1 or 2): ");
+        int typeChoice = getIntInput();
 
-        System.out.print("Select genre (1-" + genres.size() + "): ");
-        int genreChoice = getIntInput();
-        if (genreChoice < 1 || genreChoice > genres.size()) {
-            System.out.println("Invalid choice. Please try again.");
+        if (typeChoice == 1) {
+            // === Genre-based win condition ===
+            System.out.println("Available genres:");
+            int i = 1;
+            String[] genreArray = genres.toArray(new String[0]);
+            for (String genre : genreArray) {
+                System.out.println(i + ". " + genre);
+                i++;
+            }
+
+            System.out.print("Select genre (1-" + genres.size() + "): ");
+            int genreChoice = getIntInput();
+            if (genreChoice < 1 || genreChoice > genres.size()) {
+                System.out.println("Invalid choice. Please try again.");
+                showWinConditionSelection(player, genres);
+                return;
+            }
+
+            String selectedGenre = genreArray[genreChoice - 1];
+            System.out.print("How many " + selectedGenre + " movies to win (1-5): ");
+            int count = getIntInput();
+            if (count < 1 || count > 5) {
+                System.out.println("Invalid count. Please choose between 1 and 5.");
+                showWinConditionSelection(player, genres);
+                return;
+            }
+
+            gameController.setPlayerWinCondition(player, selectedGenre, count);
+
+        } else if (typeChoice == 2) {
+            // === Person-based win condition ===
+            System.out.println("Select role:");
+            System.out.println("1. Actor");
+            System.out.println("2. Director");
+            System.out.println("3. Writer");
+            System.out.println("4. Composer");
+            System.out.print("Enter role (1-4): ");
+            int roleChoice = getIntInput();
+            String role = null;
+
+            switch (roleChoice) {
+                case 1 -> role = "actor";
+                case 2 -> role = "director";
+                case 3 -> role = "writer";
+                case 4 -> role = "composer";
+                default -> {
+                    System.out.println("Invalid role. Please try again.");
+                    showWinConditionSelection(player, genres);
+                    return;
+                }
+            }
+
+            System.out.print("Enter full name of the " + role + ": ");
+            String name = scanner.nextLine();
+
+            System.out.print("How many movies with " + name + " (" + role + ") to win (1-5): ");
+            int count = getIntInput();
+            if (count < 1 || count > 5) {
+                System.out.println("Invalid count. Please choose between 1 and 5.");
+                showWinConditionSelection(player, genres);
+                return;
+            }
+
+            gameController.setPlayerWinConditionByPerson(player, role, name, count);
+
+        } else {
+            System.out.println("Invalid input. Please try again.");
             showWinConditionSelection(player, genres);
-            return;
         }
-
-        String selectedGenre = genreArray[genreChoice - 1];
-
-        System.out.print("How many " + selectedGenre + " movies to win (1-5): ");
-        int count = getIntInput();
-        if (count < 1 || count > 5) {
-            System.out.println("Invalid count. Please choose between 1 and 5.");
-            showWinConditionSelection(player, genres);
-            return;
-        }
-
-        gameController.setPlayerWinCondition(player, selectedGenre, count);
     }
+
 
     /**
      * Update the displayed game state
