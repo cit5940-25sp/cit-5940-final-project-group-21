@@ -19,7 +19,7 @@ The Movie Name Game is a turn-based game where:
 
 ## Technical Features
 - Implementation of Model-View-Controller (MVC) design pattern
-- Implementation of [Second Design Pattern Name] design pattern
+- Implementation of Strategy design pattern
 - Advanced data indexing system for efficient movie lookups
 - Real-time autocomplete functionality
 - Text-based user interface
