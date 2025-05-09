@@ -9,7 +9,7 @@ import java.util.List;
  */
 public class Player {
     private String name;
-    private List<Movie> selectedMovies;
+    private List<model.Movie> selectedMovies;
     private WinCondition winCondition;
     private int winProgress;
 
@@ -59,7 +59,7 @@ public class Player {
      * @param movie Selected movie
      * @return true if added successfully, false if the movie was already selected
      */
-    public boolean addSelectedMovie(Movie movie) {
+    public boolean addSelectedMovie(model.Movie movie) {
         if (selectedMovies.contains(movie)) {
             return false;
         }
@@ -79,7 +79,7 @@ public class Player {
      *
      * @return List of selected movies
      */
-    public List<Movie> getSelectedMovies() {
+    public List<model.Movie> getSelectedMovies() {
         return new ArrayList<>(selectedMovies);
     }
 
@@ -89,7 +89,7 @@ public class Player {
      * @param count Number of movies to retrieve
      * @return List of recent movies
      */
-    public List<Movie> getRecentMovies(int count) {
+    public List<model.Movie> getRecentMovies(int count) {
         int size = selectedMovies.size();
         int startIndex = Math.max(0, size - count);
         return new ArrayList<>(selectedMovies.subList(startIndex, size));

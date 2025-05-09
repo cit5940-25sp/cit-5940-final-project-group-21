@@ -1,8 +1,6 @@
-package model;
+package main.model;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,9 +16,9 @@ public class GameState {
     }
 
     private State currentState;
-    private Player player1;
-    private Player player2;
-    private Player currentPlayer;
+    private model.Player player1;
+    private model.Player player2;
+    private model.Player currentPlayer;
     private Movie currentMovie;
     private int roundCount;
     private Map<String, Integer> connectionCounts; // Tracks number of times a connection is used
@@ -44,10 +42,10 @@ public class GameState {
      */
     public boolean addPlayer(String name) {
         if (player1 == null) {
-            player1 = new Player(name);
+            player1 = new model.Player(name);
             return true;
         } else if (player2 == null) {
-            player2 = new Player(name);
+            player2 = new model.Player(name);
             currentState = State.SETTING_WIN_CONDITIONS;
             return true;
         }
@@ -60,7 +58,7 @@ public class GameState {
      * @param player Player
      * @param winCondition Win condition
      */
-    public void setPlayerWinCondition(Player player, Player.WinCondition winCondition) {
+    public void setPlayerWinCondition(model.Player player, model.Player.WinCondition winCondition) {
         player.setWinCondition(winCondition);
 
         // If both players have set win conditions, start the game
@@ -184,7 +182,7 @@ public class GameState {
      *
      * @return Player 1
      */
-    public Player getPlayer1() {
+    public model.Player getPlayer1() {
         return player1;
     }
 
@@ -193,7 +191,7 @@ public class GameState {
      *
      * @return Player 2
      */
-    public Player getPlayer2() {
+    public model.Player getPlayer2() {
         return player2;
     }
 
@@ -202,7 +200,7 @@ public class GameState {
      *
      * @return Current player
      */
-    public Player getCurrentPlayer() {
+    public model.Player getCurrentPlayer() {
         return currentPlayer;
     }
 

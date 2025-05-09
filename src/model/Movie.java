@@ -1,5 +1,5 @@
 
-package model;
+package main.model;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +16,10 @@ public class Movie {
     private String overview;
     private double voteAverage;
 
+    private List<String> actors;
+    private List<String> directors;
+    private List<String> writers;
+    private List<String> composers;
     /**
      * Constructor for the Movie class
      *
@@ -34,6 +38,11 @@ public class Movie {
         this.genres = new ArrayList<>(genres);
         this.overview = overview;
         this.voteAverage = voteAverage;
+
+        this.actors = new ArrayList<>();
+        this.directors = new ArrayList<>();
+        this.writers = new ArrayList<>();
+        this.composers = new ArrayList<>();
     }
 
     /**
@@ -73,6 +82,37 @@ public class Movie {
             return releaseDate.substring(0, 4);
         }
         return "Unknown";
+    }
+    public List<String> getActors() {
+        return new ArrayList<>(actors);
+    }
+
+    public List<String> getDirectors() {
+        return new ArrayList<>(directors);
+    }
+
+    public List<String> getWriters() {
+        return new ArrayList<>(writers);
+    }
+
+    public List<String> getComposers() {
+        return new ArrayList<>(composers);
+    }
+
+    public void setActors(List<String> actors) {
+        this.actors = new ArrayList<>(actors);
+    }
+
+    public void setDirectors(List<String> directors) {
+        this.directors = new ArrayList<>(directors);
+    }
+
+    public void setWriters(List<String> writers) {
+        this.writers = new ArrayList<>(writers);
+    }
+
+    public void setComposers(List<String> composers) {
+        this.composers = new ArrayList<>(composers);
     }
 
     /**
