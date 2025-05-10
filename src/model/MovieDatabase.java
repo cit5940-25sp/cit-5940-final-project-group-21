@@ -3,14 +3,14 @@ package main.model;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.json.*;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
+
+
+
 
 
 /**
@@ -37,42 +37,49 @@ public class MovieDatabase {
      * @param filePath CSV file path
      * @throws IOException If file reading fails
      */
-    public void loadMoviesFromCSV(String filePath) throws IOException {
+    public void loadMoviesFromCSV(String filePath) throws IOException, CsvValidationException {
         movies.clear();
         genreIndex.clear();
         titlePrefixIndex.clear();
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-            // Skip header row
-            String line = reader.readLine();
 
-            while ((line = reader.readLine()) != null) {
+        try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
+            String[] line;
+            reader.readNext(); // skip header
+
+            while ((line = reader.readNext()) != null) {
                 try {
-                    Movie movie = parseMovieLine(line);
-                    if (movie != null) {
-                        movies.add(movie);
+                    int id = Integer.parseInt(line[3]);
+                    String title = line[17];
+                    String releaseDate = line[11];
+                    String genresJson = line[1];
+                    String overview = line[7];
+                    double voteAverage = Double.parseDouble(line[18]);
 
-                        // Update genre index
-                        for (String genre : movie.getGenres()) {
-                            genreIndex.computeIfAbsent(genre, k -> new ArrayList<>()).add(movie);
-                        }
+                    List<String> genres = parseGenres(genresJson);
+                    Movie movie = new Movie(id, title, releaseDate, genres, overview, voteAverage);
+                    movies.add(movie);
 
-                        // Update title prefix index
-                        String title = movie.getTitle().toLowerCase();
-                        for (int i = 1; i <= Math.min(5, title.length()); i++) {
-                            String prefix = title.substring(0, i);
-                            titlePrefixIndex.computeIfAbsent(prefix, k -> new ArrayList<>()).add(movie);
-                        }
+                    for (String genre : genres) {
+                        genreIndex.computeIfAbsent(genre, k -> new ArrayList<>()).add(movie);
+                    }
+
+                    String lowerTitle = title.toLowerCase();
+                    for (int i = 1; i <= Math.min(5, lowerTitle.length()); i++) {
+                        String prefix = lowerTitle.substring(0, i);
+                        titlePrefixIndex.computeIfAbsent(prefix, k -> new ArrayList<>()).add(movie);
                     }
                 } catch (Exception e) {
-                    // Skip lines with parsing errors
-                    System.err.println("Error parsing line: " + line);
+                    System.err.println("Error parsing line: " + Arrays.toString(line));
                     e.printStackTrace();
                 }
             }
         }
 
+
         System.out.println("Loaded " + movies.size() + " movies");
+        System.out.println("Genres loaded: " + genreIndex.keySet());
+
     }
 
     /**
@@ -107,23 +114,24 @@ public class MovieDatabase {
      * @param genresJson JSON string of genres field
      * @return List of genre names
      */
+
+
     private List<String> parseGenres(String genresJson) {
         List<String> genres = new ArrayList<>();
-
-        // Simplified JSON parsing
-        // A real project should use a JSON library
-        if (genresJson != null && !genresJson.isEmpty()) {
-            String[] genreParts = genresJson.split("\"name\":\\s*\"");
-            for (int i = 1; i < genreParts.length; i++) {
-                int endIndex = genreParts[i].indexOf("\"");
-                if (endIndex > 0) {
-                    genres.add(genreParts[i].substring(0, endIndex));
+        try {
+            JSONArray arr = new JSONArray(genresJson);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
+                if (obj.has("name")) {
+                    genres.add(obj.getString("name"));
                 }
             }
+        } catch (Exception e) {
+            System.err.println("Failed to parse genres: " + genresJson);
         }
-
         return genres;
     }
+
 
     /**
      * Get all movies in the database
