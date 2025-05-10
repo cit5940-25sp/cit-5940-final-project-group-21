@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.json.*;
+
 
 /**
  * Movie database class responsible for loading and managing movie data.
@@ -213,4 +215,57 @@ public class MovieDatabase {
         int randomIndex = (int) (Math.random() * movies.size());
         return movies.get(randomIndex);
     }
+
+    //for information regarding identity: actors/writers/directors/compositors
+
+    public void loadCreditsFromCSV(String filePath) throws IOException {
+        Map<Integer, Movie> movieMap = movies.stream()
+                .collect(Collectors.toMap(Movie::getId, m -> m));
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line = reader.readLine(); // skip header
+
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",", 4);
+                if (parts.length < 4) continue;
+
+                int movieId = Integer.parseInt(parts[0]);
+                Movie movie = movieMap.get(movieId);
+                if (movie == null) continue;
+
+                try {
+                    JSONArray castArray = new JSONArray(parts[2]);
+                    List<String> actors = new ArrayList<>();
+                    for (int i = 0; i < Math.min(castArray.length(), 5); i++) {
+                        JSONObject castMember = castArray.getJSONObject(i);
+                        actors.add(castMember.getString("name"));
+                    }
+                    movie.setActors(actors);
+
+                    JSONArray crewArray = new JSONArray(parts[3]);
+                    List<String> directors = new ArrayList<>();
+                    List<String> writers = new ArrayList<>();
+                    List<String> composers = new ArrayList<>();
+
+                    for (int i = 0; i < crewArray.length(); i++) {
+                        JSONObject crewMember = crewArray.getJSONObject(i);
+                        String job = crewMember.getString("job");
+                        String name = crewMember.getString("name");
+                        switch (job) {
+                            case "Director" -> directors.add(name);
+                            case "Writer" -> writers.add(name);
+                            case "Original Music Composer" -> composers.add(name);
+                        }
+                    }
+
+                    movie.setDirectors(directors);
+                    movie.setWriters(writers);
+                    movie.setComposers(composers);
+                } catch (JSONException e) {
+                    System.err.println("JSON error for movie ID: " + movieId);
+                }
+            }
+        }
+    }
+
 }
