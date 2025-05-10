@@ -11,7 +11,9 @@ import main.view.GameView;
  * Initializes all components and starts the game.
  */
 public class MovieNameGame {
-    private static final String DATA_FILE_PATH = "data/tmdb_5000_movies.csv";
+    private static final String MOVIE_FILE_PATH = "data/tmdb_5000_movies.csv";
+    private static final String CREDITS_FILE_PATH = "data/tmdb_5000_credits.csv";
+
 
     private MovieDatabase movieDatabase;
     private GameController gameController;
@@ -71,7 +73,7 @@ public class MovieNameGame {
      */
     public void start() {
         // Load movie data
-        gameController.initialize(DATA_FILE_PATH);
+        gameController.initialize(MOVIE_FILE_PATH, CREDITS_FILE_PATH);
 
         // Show main menu
         gameView.showMainMenu();

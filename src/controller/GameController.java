@@ -46,17 +46,20 @@ public class GameController {
     /**
      * Initialize the game
      *
-     * @param dataFilePath Path to movie data file
+     * @param movieFilePath,creditsFilePath Path to movie data file
      */
-    public void initialize(String dataFilePath) {
+    public void initialize(String movieFilePath, String creditsFilePath) {
         try {
-            movieDatabase.loadMoviesFromCSV(dataFilePath);
-            gameView.showMessage("Loaded " + movieDatabase.getAllMovies().size() + " movies");
+            movieDatabase.loadMoviesFromCSV(movieFilePath);
+            movieDatabase.loadCreditsFromCSV(creditsFilePath);
+
+            gameView.showMessage("Loaded " + movieDatabase.getAllMovies().size() + " movies with credits");
         } catch (IOException e) {
-            gameView.showError("Error loading movie data: " + e.getMessage());
+            gameView.showError("Error loading movie or credits data: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
 
     /**
      * Add a player to the game
