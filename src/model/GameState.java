@@ -16,9 +16,9 @@ public class GameState {
     }
 
     private State currentState;
-    private model.Player player1;
-    private model.Player player2;
-    private model.Player currentPlayer;
+    private main.model.Player player1;
+    private main.model.Player player2;
+    private main.model.Player currentPlayer;
     private Movie currentMovie;
     private int roundCount;
     private Map<String, Integer> connectionCounts; // Tracks number of times a connection is used
@@ -42,10 +42,10 @@ public class GameState {
      */
     public boolean addPlayer(String name) {
         if (player1 == null) {
-            player1 = new model.Player(name);
+            player1 = new main.model.Player(name);
             return true;
         } else if (player2 == null) {
-            player2 = new model.Player(name);
+            player2 = new main.model.Player(name);
             currentState = State.SETTING_WIN_CONDITIONS;
             return true;
         }
@@ -58,7 +58,7 @@ public class GameState {
      * @param player Player
      * @param winCondition Win condition
      */
-    public void setPlayerWinCondition(model.Player player, model.Player.WinCondition winCondition) {
+    public void setPlayerWinCondition(main.model.Player player, main.model.Player.WinCondition winCondition) {
         player.setWinCondition(winCondition);
 
         // If both players have set win conditions, start the game
@@ -182,7 +182,7 @@ public class GameState {
      *
      * @return Player 1
      */
-    public model.Player getPlayer1() {
+    public main.model.Player getPlayer1() {
         return player1;
     }
 
@@ -191,7 +191,7 @@ public class GameState {
      *
      * @return Player 2
      */
-    public model.Player getPlayer2() {
+    public main.model.Player getPlayer2() {
         return player2;
     }
 
@@ -200,7 +200,7 @@ public class GameState {
      *
      * @return Current player
      */
-    public model.Player getCurrentPlayer() {
+    public main.model.Player getCurrentPlayer() {
         return currentPlayer;
     }
 

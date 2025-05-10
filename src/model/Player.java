@@ -1,4 +1,4 @@
-package model;
+package main.model;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.List;
  */
 public class Player {
     private String name;
-    private List<model.Movie> selectedMovies;
+    private List<Movie> selectedMovies;
     private WinCondition winCondition;
     private int winProgress;
 
@@ -59,7 +59,7 @@ public class Player {
      * @param movie Selected movie
      * @return true if added successfully, false if the movie was already selected
      */
-    public boolean addSelectedMovie(model.Movie movie) {
+    public boolean addSelectedMovie(Movie movie) {
         if (selectedMovies.contains(movie)) {
             return false;
         }
@@ -79,7 +79,7 @@ public class Player {
      *
      * @return List of selected movies
      */
-    public List<model.Movie> getSelectedMovies() {
+    public List<Movie> getSelectedMovies() {
         return new ArrayList<>(selectedMovies);
     }
 
@@ -89,7 +89,7 @@ public class Player {
      * @param count Number of movies to retrieve
      * @return List of recent movies
      */
-    public List<model.Movie> getRecentMovies(int count) {
+    public List<Movie> getRecentMovies(int count) {
         int size = selectedMovies.size();
         int startIndex = Math.max(0, size - count);
         return new ArrayList<>(selectedMovies.subList(startIndex, size));
@@ -186,6 +186,41 @@ public class Player {
             this.genre = genre;
         }
 
+        /**
+         * Role-based person win condition (e.g., actor, director, etc.)
+         */
+        public static class PersonWinCondition extends WinCondition {
+            private String role;  // "actor", "director", "writer", "composer"
+            private String personName;
+
+            public PersonWinCondition(String role, String personName, int count) {
+                super("Need to name " + count + " movies with " + role + ": " + personName, count);
+                this.role = role;
+                this.personName = personName;
+            }
+
+            @Override
+            public boolean checkMovie(Movie movie) {
+                List<String> people = switch (role) {
+                    case "actor" -> movie.getActors();
+                    case "director" -> movie.getDirectors();
+                    case "writer" -> movie.getWriters();
+                    case "composer" -> movie.getComposers();
+                    default -> new ArrayList<>();
+                };
+                return people.contains(personName);
+            }
+
+            public String getRole() {
+                return role;
+            }
+
+            public String getPersonName() {
+                return personName;
+            }
+        }
+
+
         @Override
         public boolean checkMovie(Movie movie) {
             return movie.hasGenre(genre);
@@ -200,4 +235,6 @@ public class Player {
             return genre;
         }
     }
+
+
 }

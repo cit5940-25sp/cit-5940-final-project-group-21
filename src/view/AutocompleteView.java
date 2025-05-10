@@ -1,8 +1,8 @@
 
-package view;
+package main.view;
 
-import model.Movie;
-import controller.AutocompleteController;
+import main.model.Movie;
+import main.controller.AutocompleteController;
 
 import java.util.List;
 

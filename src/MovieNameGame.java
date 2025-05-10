@@ -1,10 +1,10 @@
 package main;
 
-import controller.AutocompleteController;
-import controller.GameController;
-import model.MovieDatabase;
-import view.AutocompleteView;
-import view.GameView;
+import main.controller.AutocompleteController;
+import main.controller.GameController;
+import main.model.MovieDatabase;
+import main.view.AutocompleteView;
+import main.view.GameView;
 
 /**
  * Main application class for the Movie Name Game.
