@@ -1,5 +1,6 @@
 package main.controller;
 
+import com.opencsv.exceptions.CsvValidationException;
 import main.model.GameState;
 import main.model.Movie;
 import main.model.Player;
@@ -52,13 +53,13 @@ public class GameController {
         try {
             movieDatabase.loadMoviesFromCSV(movieFilePath);
             movieDatabase.loadCreditsFromCSV(creditsFilePath);
-
             gameView.showMessage("Loaded " + movieDatabase.getAllMovies().size() + " movies with credits");
-        } catch (IOException e) {
+        } catch (IOException | CsvValidationException e) {
             gameView.showError("Error loading movie or credits data: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
 
 
     /**
@@ -103,11 +104,13 @@ public class GameController {
      */
     private void startGame() {
         Movie startingMovie = movieDatabase.getRandomMovie();
+        gameState.startGame(startingMovie);
         gameView.updateGameState(gameState);
         gameView.showMessage("Game started with movie: " + startingMovie.getTitle());
 
         startTurnTimer();
     }
+
 
     /**
      * Handle movie selection
