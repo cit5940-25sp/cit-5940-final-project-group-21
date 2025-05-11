@@ -2,6 +2,8 @@ package main.model;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Represents the game state and manages game logic and rules.
@@ -21,17 +23,16 @@ public class GameState {
     private main.model.Player currentPlayer;
     private Movie currentMovie;
     private int roundCount;
-    private Map<String, Integer> connectionCounts; // Tracks number of times a connection is used
-    private Map<String, Boolean> bannedConnections; // Tracks banned connections
+    private Map<String, Integer> personConnectionCounts; // Tracks specific person connections (e.g., "actor:Tom Hanks")
+    private boolean DEBUG_MODE = false; // 设置为false以关闭调试信息
 
     /**
      * Constructor
      */
     public GameState() {
         currentState = State.WAITING_FOR_PLAYERS;
-        connectionCounts = new HashMap<>();
-        bannedConnections = new HashMap<>();
         roundCount = 0;
+        personConnectionCounts = new HashMap<>();
     }
 
     /**
@@ -53,22 +54,6 @@ public class GameState {
     }
 
     /**
-     * Set a player's win condition
-     *
-     * @param player Player
-     * @param winCondition Win condition
-     */
-    public void setPlayerWinCondition(main.model.Player player, main.model.Player.WinCondition winCondition) {
-        player.setWinCondition(winCondition);
-
-        // If both players have set win conditions, start the game
-        if (player1.getWinCondition() != null && player2.getWinCondition() != null) {
-            currentState = State.PLAYING;
-            currentPlayer = player1; // Player 1 goes first
-        }
-    }
-
-    /**
      * Start a new game
      *
      * @param startingMovie Starting movie
@@ -80,85 +65,226 @@ public class GameState {
 
         currentMovie = startingMovie;
         roundCount = 1;
+        currentPlayer = player1; // Player 1 goes first
 
-        // Clear previous game data
+        // Reset game data but keep connection types and target counts
         player1.reset();
         player2.reset();
-        connectionCounts.clear();
-        bannedConnections.clear();
+        personConnectionCounts.clear();
     }
 
     /**
-     * Player selects the next movie
+     * Player selects the next movie with specific connection
      *
      * @param movie Selected movie
-     * @param connection Connection type (actor, director, etc.)
+     * @param connectionType Connection type ("genre", "actor", "director", etc.)
+     * @param connectionValue For person: person name; for genre: genre name
      * @return true if selection is valid, false otherwise
      */
-    public boolean selectMovie(Movie movie, String connection) {
+    public boolean selectMovie(Movie movie, String connectionType, String connectionValue) {
+        if (DEBUG_MODE) {
+            System.out.println("\n--- GameState.selectMovie DEBUG START ---");
+            System.out.println("Current state: " + currentState);
+            System.out.println("Current player: " + currentPlayer.getName());
+            System.out.println("Connection type: " + connectionType);
+            System.out.println("Connection value: " + connectionValue);
+        }
+
         if (currentState != State.PLAYING) {
+            if (DEBUG_MODE) {
+                System.out.println("ERROR: Game not in PLAYING state");
+                System.out.println("--- GameState.selectMovie DEBUG END ---\n");
+            }
             return false;
         }
 
         // Check if movie has already been used
         if (player1.getSelectedMovies().contains(movie) ||
                 player2.getSelectedMovies().contains(movie)) {
+            if (DEBUG_MODE) {
+                System.out.println("ERROR: Movie already used");
+                System.out.println("--- GameState.selectMovie DEBUG END ---\n");
+            }
             return false;
         }
 
-        // Check if connection is valid
-        if (!isConnectionValid(connection)) {
+        boolean validConnection = false;
+        boolean isPlayerConnectionMatch = false;
+
+        // Check connection based on type
+        if (connectionType.equals("genre")) {
+            // Genre connection
+            validConnection = currentMovie.getGenres().contains(connectionValue) &&
+                    movie.getGenres().contains(connectionValue);
+            // For genre connections, always increment progress if connection is valid
+            isPlayerConnectionMatch = validConnection;
+        } else {
+            // Person connection (actor, director, writer, composer)
+            validConnection = verifyConnection(currentMovie, movie, connectionType, connectionValue);
+
+            if (validConnection) {
+                // Check if person connection has been used too many times
+                String personKey = connectionType + ":" + connectionValue;
+                int personCount = personConnectionCounts.getOrDefault(personKey, 0);
+                if (personCount >= 3) {
+                    if (DEBUG_MODE) {
+                        System.out.println("ERROR: Person connection used too many times");
+                    }
+                    validConnection = false;
+                } else {
+                    // Update person connection count
+                    personConnectionCounts.put(personKey, personCount + 1);
+                    // For person connections, always increment progress if connection is valid
+                    isPlayerConnectionMatch = validConnection;
+                }
+            }
+        }
+
+        if (!validConnection) {
+            if (DEBUG_MODE) {
+                System.out.println("ERROR: Invalid connection");
+                System.out.println("--- GameState.selectMovie DEBUG END ---\n");
+            }
             return false;
         }
 
         // Record selection
         currentPlayer.addSelectedMovie(movie);
-        updateConnectionCount(connection);
+        if (isPlayerConnectionMatch) {
+            currentPlayer.incrementProgress();
+        }
         currentMovie = movie;
 
         // Check win condition
         if (currentPlayer.hasWon()) {
+            if (DEBUG_MODE) {
+                System.out.println("Player " + currentPlayer.getName() + " has won!");
+            }
             currentState = State.GAME_OVER;
+            if (DEBUG_MODE) {
+                System.out.println("--- GameState.selectMovie DEBUG END ---\n");
+            }
             return true;
         }
 
-        // Switch players
-        switchPlayer();
         roundCount++;
 
+        if (DEBUG_MODE) {
+            System.out.println("--- GameState.selectMovie DEBUG END ---\n");
+        }
         return true;
     }
 
     /**
-     * Check if connection is valid
+     * Verify if a specific person connection exists between two movies
      *
-     * @param connection Connection to check
-     * @return true if valid, false otherwise
+     * @param from Source movie
+     * @param to Target movie
+     * @param connectionType Connection type (actor, director, etc.)
+     * @param personName Name of the person
+     * @return true if valid connection exists
      */
-    private boolean isConnectionValid(String connection) {
-        // Check if connection is banned
-        if (bannedConnections.getOrDefault(connection, false)) {
-            return false;
+    public boolean verifyConnection(Movie from, Movie to, String connectionType, String personName) {
+        List<String> toPeople = new ArrayList<>();
+        List<String> fromPeople = new ArrayList<>();
+
+        switch (connectionType) {
+            case "actor":
+                toPeople = to.getActors();
+                fromPeople = from.getActors();
+                break;
+            case "director":
+                toPeople = to.getDirectors();
+                fromPeople = from.getDirectors();
+                break;
+            case "writer":
+                toPeople = to.getWriters();
+                fromPeople = from.getWriters();
+                break;
+            case "composer":
+                toPeople = to.getComposers();
+                fromPeople = from.getComposers();
+                break;
+            default:
+                return false;
         }
 
-        // Check if connection has been used too many times
-        int count = connectionCounts.getOrDefault(connection, 0);
-        return count < 3; // Maximum 3 uses per connection
+        // Check if the person exists in both movies
+        return toPeople.contains(personName) && fromPeople.contains(personName);
     }
 
     /**
-     * Update connection usage count
+     * Get available connections between current movie and target movie
      *
-     * @param connection Connection type
+     * @param targetMovie Target movie to connect to
+     * @return List of available connections in format "connectionType:personName"
      */
-    private void updateConnectionCount(String connection) {
-        int count = connectionCounts.getOrDefault(connection, 0);
-        connectionCounts.put(connection, count + 1);
+    public List<String> getAvailableConnections(Movie targetMovie) {
+        List<String> availableConnections = new ArrayList<>();
+        Movie from = currentMovie;
 
-        // Ban connection if it has been used 3 times
-        if (count + 1 >= 3) {
-            bannedConnections.put(connection, true);
+        // Check shared actors
+        for (String actor : targetMovie.getActors()) {
+            if (from.getActors().contains(actor)) {
+                String personKey = "actor:" + actor;
+                int count = personConnectionCounts.getOrDefault(personKey, 0);
+                if (count < 3) {
+                    availableConnections.add(personKey);
+                }
+            }
         }
+
+        // Check shared directors
+        for (String director : targetMovie.getDirectors()) {
+            if (from.getDirectors().contains(director)) {
+                String personKey = "director:" + director;
+                int count = personConnectionCounts.getOrDefault(personKey, 0);
+                if (count < 3) {
+                    availableConnections.add(personKey);
+                }
+            }
+        }
+
+        // Check shared writers
+        for (String writer : targetMovie.getWriters()) {
+            if (from.getWriters().contains(writer)) {
+                String personKey = "writer:" + writer;
+                int count = personConnectionCounts.getOrDefault(personKey, 0);
+                if (count < 3) {
+                    availableConnections.add(personKey);
+                }
+            }
+        }
+
+        // Check shared composers
+        for (String composer : targetMovie.getComposers()) {
+            if (from.getComposers().contains(composer)) {
+                String personKey = "composer:" + composer;
+                int count = personConnectionCounts.getOrDefault(personKey, 0);
+                if (count < 3) {
+                    availableConnections.add(personKey);
+                }
+            }
+        }
+
+        return availableConnections;
+    }
+
+    /**
+     * Get the count for a specific person connection
+     *
+     * @param connectionKey The connection key (e.g., "actor:Tom Hanks")
+     * @return The current count for this connection
+     */
+    public int getPersonConnectionCount(String connectionKey) {
+        return personConnectionCounts.getOrDefault(connectionKey, 0);
+    }
+
+    /**
+     * Switch to the next player (public method for controller access)
+     */
+    public void switchToNextPlayer() {
+        switchPlayer();
     }
 
     /**
@@ -223,32 +349,20 @@ public class GameState {
     }
 
     /**
-     * Ban a connection
+     * Set the current game state
      *
-     * @param connection Connection to ban
+     * @param state New state
      */
-    public void banConnection(String connection) {
-        bannedConnections.put(connection, true);
+    public void setState(State state) {
+        this.currentState = state;
     }
 
     /**
-     * Check if a connection is banned
+     * Set the current player
      *
-     * @param connection Connection to check
-     * @return true if banned, false otherwise
+     * @param player Player to set as current
      */
-    public boolean isConnectionBanned(String connection) {
-        return bannedConnections.getOrDefault(connection, false);
-    }
-
-    /**
-     * Get remaining uses for a connection
-     *
-     * @param connection Connection type
-     * @return Remaining uses (0-3)
-     */
-    public int getRemainingConnectionUses(String connection) {
-        int count = connectionCounts.getOrDefault(connection, 0);
-        return Math.max(0, 3 - count);
+    public void setCurrentPlayer(main.model.Player player) {
+        this.currentPlayer = player;
     }
 }
