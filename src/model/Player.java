@@ -12,6 +12,7 @@ public class Player {
     private List<Movie> selectedMovies;
     private WinCondition winCondition;
     private int winProgress;
+    private String connectionType; // "genre" or "person"
 
     /**
      * Constructor for the Player class
@@ -23,6 +24,7 @@ public class Player {
         this.selectedMovies = new ArrayList<>();
         this.winCondition = null;
         this.winProgress = 0;
+        this.connectionType = null;
     }
 
     /**
@@ -32,6 +34,24 @@ public class Player {
      */
     public String getName() {
         return name;
+    }
+
+    /**
+     * Set player's connection type
+     *
+     * @param connectionType Connection type ("genre" or "person")
+     */
+    public void setConnectionType(String connectionType) {
+        this.connectionType = connectionType;
+    }
+
+    /**
+     * Get player's connection type
+     *
+     * @return Connection type
+     */
+    public String getConnectionType() {
+        return connectionType;
     }
 
     /**
@@ -220,7 +240,6 @@ public class Player {
             }
         }
 
-
         @Override
         public boolean checkMovie(Movie movie) {
             return movie.hasGenre(genre);
@@ -235,6 +254,4 @@ public class Player {
             return genre;
         }
     }
-
-
 }
