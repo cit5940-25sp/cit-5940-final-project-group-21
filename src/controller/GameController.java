@@ -24,6 +24,9 @@ public class GameController {
     private GameView gameView;
     private Timer turnTimer;
     private static final int TURN_TIME_SECONDS = 30;
+    private boolean timerPaused = false;
+    private boolean DEBUG_MODE = false; // 设置为false以关闭调试信息
+    private boolean gameEnding = false; // 防止重复调用 endGame
 
     /**
      * Constructor for the GameController
@@ -53,10 +56,17 @@ public class GameController {
         try {
             movieDatabase.loadMoviesFromCSV(movieFilePath);
             movieDatabase.loadCreditsFromCSV(creditsFilePath);
-            gameView.showMessage("Loaded " + movieDatabase.getAllMovies().size() + " movies with credits");
+            // 只有在非静默模式下才显示加载信息
+            if (DEBUG_MODE) {
+                gameView.showMessage("Loaded " + movieDatabase.getAllMovies().size() + " movies with credits");
+            }
+
         } catch (IOException | CsvValidationException e) {
-            gameView.showError("Error loading movie or credits data: " + e.getMessage());
-            e.printStackTrace();
+            gameView.showError("Error loading movie data. Continuing with available data...");
+            if (DEBUG_MODE) {
+                System.out.println("ERROR: Exception details:");
+                e.printStackTrace();
+            }
         }
     }
 
@@ -85,13 +95,15 @@ public class GameController {
     }
 
     /**
-     * Set a player's connection type (genre or person)
+     * Set a player's connection type
      *
      * @param player Player
      * @param connectionType Connection type ("genre" or "person")
+     * @param targetCount Number of movies needed to win
      */
-    public void setPlayerConnectionType(Player player, String connectionType) {
+    public void setPlayerConnectionType(Player player, String connectionType, int targetCount) {
         player.setConnectionType(connectionType);
+        player.setTargetCount(targetCount);
 
         // If player 1 just selected, show selection for player 2
         if (player == gameState.getPlayer1() && gameState.getPlayer2().getConnectionType() == null) {
@@ -102,7 +114,9 @@ public class GameController {
         else if (gameState.getPlayer1().getConnectionType() != null &&
                 gameState.getPlayer2().getConnectionType() != null) {
 
-            System.out.println("DEBUG: Both players have selected. Starting game...");
+            if (DEBUG_MODE) {
+                System.out.println("DEBUG: Both players have selected. Starting game...");
+            }
 
             // Set the state to PLAYING before calling startGame()
             gameState.setState(GameState.State.PLAYING);
@@ -132,40 +146,57 @@ public class GameController {
     }
 
     /**
+     * Check if timer is paused
+     *
+     * @return true if timer is paused
+     */
+    public boolean isTimerPaused() {
+        return timerPaused;
+    }
+
+    /**
      * Start the game
      */
     private void startGame() {
-        System.out.println("DEBUG: startGame() method called");
+        if (DEBUG_MODE) {
+            System.out.println("DEBUG: startGame() method called");
+        }
 
         Movie startingMovie = movieDatabase.getRandomMovie();
-        System.out.println("DEBUG: Random movie selected: " + (startingMovie != null ? startingMovie.getTitle() : "null"));
+        if (DEBUG_MODE && startingMovie != null) {
+            System.out.println("DEBUG: Random movie selected: " + startingMovie.getTitle());
+        }
 
         try {
             gameState.startGame(startingMovie);
-            System.out.println("DEBUG: gameState.startGame() completed");
+            if (DEBUG_MODE) {
+                System.out.println("DEBUG: gameState.startGame() completed");
+            }
         } catch (Exception e) {
-            System.out.println("DEBUG: Error in gameState.startGame()");
-            e.printStackTrace();
+            if (DEBUG_MODE) {
+                System.out.println("DEBUG: Error in gameState.startGame()");
+                e.printStackTrace();
+            }
             return;
         }
 
         try {
             gameView.updateGameState(gameState);
-            System.out.println("DEBUG: gameView.updateGameState() completed");
+            if (DEBUG_MODE) {
+                System.out.println("DEBUG: gameView.updateGameState() completed");
+            }
         } catch (Exception e) {
-            System.out.println("DEBUG: Error in gameView.updateGameState()");
-            e.printStackTrace();
+            if (DEBUG_MODE) {
+                System.out.println("DEBUG: Error in gameView.updateGameState()");
+                e.printStackTrace();
+            }
             return;
         }
 
         gameView.showMessage("Game started with movie: " + startingMovie.getTitle());
 
-        try {
-            startTurnTimer();
-            System.out.println("DEBUG: startTurnTimer() completed");
-        } catch (Exception e) {
-            System.out.println("DEBUG: Error in startTurnTimer()");
-            e.printStackTrace();
+        if (DEBUG_MODE) {
+            System.out.println("DEBUG: Game started successfully");
         }
     }
 
@@ -177,92 +208,144 @@ public class GameController {
     public void selectMovieByGenre(String movieTitle) {
         List<Movie> movies = movieDatabase.findMoviesByTitle(movieTitle);
 
+        // Cancel current timer
+        if (turnTimer != null) {
+            turnTimer.cancel();
+            turnTimer = null;
+        }
+
+        boolean success = false;
+        String resultMessage = "";
+        Player currentPlayer = gameState.getCurrentPlayer();
+
         if (movies.isEmpty()) {
-            gameView.showError("Movie not found: " + movieTitle);
-            return;
-        }
-
-        Movie selectedMovie = movies.get(0);
-        Movie currentMovie = gameState.getCurrentMovie();
-
-        // Check if the selected movie shares any genre with the current movie
-        boolean hasSharedGenre = false;
-        String sharedGenre = null;
-        for (String genre : selectedMovie.getGenres()) {
-            if (currentMovie.getGenres().contains(genre)) {
-                hasSharedGenre = true;
-                sharedGenre = genre;
-                break;
-            }
-        }
-
-        if (!hasSharedGenre) {
-            gameView.showError("Selected movie does not share any genre with the current movie.");
-            return;
-        }
-
-        // Use the existing selectMovie method with a genre connection
-        boolean success = gameState.selectMovie(selectedMovie, "genre", sharedGenre);
-
-        if (success) {
-            resetTurnTimer();
-            gameView.updateGameState(gameState);
-
-            if (gameState.getCurrentState() == GameState.State.GAME_OVER) {
-                endGame();
-            }
+            resultMessage = "Movie not found: " + movieTitle;
         } else {
-            gameView.showError("Invalid selection. Please try again.");
+            Movie selectedMovie = movies.get(0);
+            Movie currentMovie = gameState.getCurrentMovie();
+
+            // Check if the selected movie shares any genre with the current movie
+            boolean hasSharedGenre = false;
+            String sharedGenre = null;
+            for (String genre : selectedMovie.getGenres()) {
+                if (currentMovie.getGenres().contains(genre)) {
+                    hasSharedGenre = true;
+                    sharedGenre = genre;
+                    break;
+                }
+            }
+
+            if (!hasSharedGenre) {
+                resultMessage = "Selected movie does not share any genre with the current movie.";
+            } else {
+                // Get progress before update
+                int progressBefore = currentPlayer.getWinProgress();
+
+                // Process valid move
+                success = gameState.selectMovie(selectedMovie, "genre", sharedGenre);
+                if (success) {
+                    resultMessage = "Good! You found a " + sharedGenre + " movie.";
+
+                    // Check if progress actually increased
+                    int progressAfter = currentPlayer.getWinProgress();
+                    if (progressAfter > progressBefore) {
+                        resultMessage += " Your progress: (" + progressAfter + "/" + currentPlayer.getTargetCount() + ")";
+                    }
+                } else {
+                    resultMessage = "Error processing the movie selection.";
+                }
+            }
+        }
+
+        // Display the result
+        if (success) {
+            gameView.showMessage(resultMessage);
+        } else {
+            gameView.showError(resultMessage);
+        }
+
+        // Always switch to next player regardless of success/failure
+        gameState.switchToNextPlayer();
+
+        // Check for win condition
+        if (gameState.getCurrentState() == GameState.State.GAME_OVER) {
+            endGame();
+        } else {
+            // Update game state to show next player's turn
+            gameView.updateGameState(gameState);
         }
     }
 
     /**
-     * Handle movie selection by person
+     * Handle movie selection with auto-detected person connection
      *
      * @param movieTitle Selected movie title
-     * @param connectionType Connection type (actor, director, etc.)
-     * @param personName Name of the person making the connection
      */
-    public void selectMovieByPerson(String movieTitle, String connectionType, String personName) {
+    public void selectMovieByPersonAutoDetect(String movieTitle) {
         List<Movie> movies = movieDatabase.findMoviesByTitle(movieTitle);
 
+        // Cancel current timer
+        if (turnTimer != null) {
+            turnTimer.cancel();
+            turnTimer = null;
+        }
+
+        boolean success = false;
+        String resultMessage = "";
+        String connectionType = null;
+        String personName = null;
+
         if (movies.isEmpty()) {
-            gameView.showError("Movie not found: " + movieTitle);
-            return;
-        }
-
-        Movie selectedMovie = movies.get(0);
-
-        // First check if the connection actually exists
-        if (!gameState.verifyConnection(gameState.getCurrentMovie(), selectedMovie, connectionType, personName)) {
-            gameView.showError("Invalid connection. " + personName + " is not a " + connectionType + " in both movies.");
-            return;
-        }
-
-        // Use the existing selectMovie method with person-specific connection
-        boolean success = gameState.selectMovie(selectedMovie, connectionType, personName);
-
-        if (success) {
-            resetTurnTimer();
-            gameView.updateGameState(gameState);
-
-            if (gameState.getCurrentState() == GameState.State.GAME_OVER) {
-                endGame();
-            }
+            resultMessage = "Movie not found: " + movieTitle;
         } else {
-            gameView.showError("Invalid selection. Person connection may have been used too many times.");
-        }
-    }
+            Movie selectedMovie = movies.get(0);
+            Movie currentMovie = gameState.getCurrentMovie();
 
-    /**
-     * Handle movie selection (backward compatibility - not used with new logic)
-     *
-     * @param movieTitle Selected movie title
-     * @param connection Connection type (actor, director, etc.)
-     */
-    public void selectMovie(String movieTitle, String connection) {
-        // This method is now handled by selectMovieByGenre or selectMovieByPerson
-        gameView.showError("Please use the connection method you selected at the beginning.");
+            // Try to find a valid person connection
+            List<String> availableConnections = gameState.getAvailableConnections(selectedMovie);
+            if (!availableConnections.isEmpty()) {
+                // Use the first available connection
+                String connectionInfo = availableConnections.get(0);
+                String[] parts = connectionInfo.split(":", 2);
+                if (parts.length == 2) {
+                    connectionType = parts[0];
+                    personName = parts[1];
+
+                    // Get current count for this connection
+                    String connectionKey = connectionType + ":" + personName;
+                    int currentCount = gameState.getPersonConnectionCount(connectionKey);
+
+                    // Process the move
+                    success = gameState.selectMovie(selectedMovie, connectionType, personName);
+                    if (success) {
+                        resultMessage = "Good! Connected via " + connectionType + ": " + personName +
+                                " (" + (currentCount + 1) + "/3)";
+                    } else {
+                        resultMessage = "Error processing the movie selection.";
+                    }
+                }
+            } else {
+                resultMessage = "No valid person connection found between these movies.";
+            }
+        }
+
+        // Display the result
+        if (success) {
+            gameView.showMessage(resultMessage);
+        } else {
+            gameView.showError(resultMessage);
+        }
+
+        // Always switch to next player regardless of success/failure
+        gameState.switchToNextPlayer();
+
+        // Check for win condition
+        if (gameState.getCurrentState() == GameState.State.GAME_OVER) {
+            endGame();
+        } else {
+            // Update game state to show next player's turn
+            gameView.updateGameState(gameState);
+        }
     }
 
     /**
@@ -294,17 +377,10 @@ public class GameController {
     }
 
     /**
-     * Reset the turn timer
-     */
-    private void resetTurnTimer() {
-        startTurnTimer();
-    }
-
-    /**
      * Handle time up event
      */
     private void handleTimeUp() {
-        if (gameState.getCurrentState() == GameState.State.PLAYING) {
+        if (gameState.getCurrentState() == GameState.State.PLAYING && !gameEnding) {
             // Stop the timer first
             if (turnTimer != null) {
                 turnTimer.cancel();
@@ -312,12 +388,21 @@ public class GameController {
             }
 
             // Clear any remaining timer display
-            System.out.println(); // Move to a new line
+            System.out.println("\n"); // Move to a new line
 
-            Player winner = (gameState.getCurrentPlayer() == gameState.getPlayer1())
-                    ? gameState.getPlayer2() : gameState.getPlayer1();
+            // Current player loses - switch to next player
+            gameState.switchToNextPlayer();
+
+            // Check if we have a winner (the other player)
+            Player currentPlayer = gameState.getCurrentPlayer();
+            Player winner = currentPlayer;
 
             gameView.showMessage("Time's up! " + winner.getName() + " wins!");
+
+            // 设置游戏状态为结束
+            gameState.setState(GameState.State.GAME_OVER);
+
+            // 调用 endGame
             endGame();
         }
     }
@@ -326,21 +411,37 @@ public class GameController {
      * End the game
      */
     private void endGame() {
+        // 防止重复调用
+        if (gameEnding) {
+            return;
+        }
+        gameEnding = true;
+
         if (turnTimer != null) {
             turnTimer.cancel();
             turnTimer = null;
         }
 
         Player winner = null;
+        Player currentPlayer = gameState.getCurrentPlayer();
+
+        // Check who actually won
         if (gameState.getPlayer1().hasWon()) {
             winner = gameState.getPlayer1();
         } else if (gameState.getPlayer2().hasWon()) {
             winner = gameState.getPlayer2();
+        } else {
+            // If no one won by connection count, it's a timeout win
+            winner = currentPlayer;
         }
 
         if (winner != null) {
+            // 显示游戏结束画面
             gameView.showGameOver(winner);
         }
+
+        // 重置标志
+        gameEnding = false;
     }
 
     /**
@@ -363,13 +464,16 @@ public class GameController {
         return movieDatabase.findMoviesByTitlePrefix(prefix, maxResults);
     }
 
-    // Add flag and methods
-    private boolean timerPaused = false;
-
+    /**
+     * Pause timer
+     */
     public void pauseTimer() {
         timerPaused = true;
     }
 
+    /**
+     * Resume timer
+     */
     public void resumeTimer() {
         timerPaused = false;
     }
