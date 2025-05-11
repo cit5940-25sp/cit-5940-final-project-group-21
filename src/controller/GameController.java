@@ -60,8 +60,6 @@ public class GameController {
         }
     }
 
-
-
     /**
      * Add a player to the game
      *
@@ -74,9 +72,12 @@ public class GameController {
         if (added) {
             gameView.updatePlayers(gameState.getPlayer1(), gameState.getPlayer2());
 
-            if (gameState.getCurrentState() == GameState.State.SETTING_WIN_CONDITIONS) {
+            // Only show connection selection for the FIRST player after second player joins
+            if (gameState.getCurrentState() == GameState.State.SETTING_WIN_CONDITIONS &&
+                    gameState.getPlayer2() != null &&
+                    gameState.getPlayer1().getConnectionType() == null) {
+                // Start with player 1
                 gameView.showWinConditionSelection(gameState.getPlayer1(), getAllGenres());
-                gameView.showWinConditionSelection(gameState.getPlayer2(), getAllGenres());
             }
         }
 
@@ -84,41 +85,96 @@ public class GameController {
     }
 
     /**
-     * Set a player's win condition
+     * Set a player's connection type (genre or person)
      *
      * @param player Player
-     * @param genre Genre for win condition
-     * @param count Number of movies required
+     * @param connectionType Connection type ("genre" or "person")
      */
-    public void setPlayerWinCondition(Player player, String genre, int count) {
-        Player.WinCondition winCondition = new Player.GenreWinCondition(genre, count);
-        gameState.setPlayerWinCondition(player, winCondition);
+    public void setPlayerConnectionType(Player player, String connectionType) {
+        player.setConnectionType(connectionType);
 
-        if (gameState.getCurrentState() == GameState.State.PLAYING) {
+        // If player 1 just selected, show selection for player 2
+        if (player == gameState.getPlayer1() && gameState.getPlayer2().getConnectionType() == null) {
+            gameView.showWinConditionSelection(gameState.getPlayer2(), getAllGenres());
+        }
+
+        // Check if both players have set their connection types
+        else if (gameState.getPlayer1().getConnectionType() != null &&
+                gameState.getPlayer2().getConnectionType() != null) {
+
+            System.out.println("DEBUG: Both players have selected. Starting game...");
+
+            // Set the state to PLAYING before calling startGame()
+            gameState.setState(GameState.State.PLAYING);
+            gameState.setCurrentPlayer(gameState.getPlayer1()); // Make sure player 1 starts
+
             startGame();
         }
+    }
+
+    /**
+     * Get a player's connection type
+     *
+     * @param player Player
+     * @return Connection type ("genre" or "person")
+     */
+    public String getPlayerConnectionType(Player player) {
+        return player.getConnectionType();
+    }
+
+    /**
+     * Get the current player
+     *
+     * @return Current player
+     */
+    public Player getCurrentPlayer() {
+        return gameState.getCurrentPlayer();
     }
 
     /**
      * Start the game
      */
     private void startGame() {
+        System.out.println("DEBUG: startGame() method called");
+
         Movie startingMovie = movieDatabase.getRandomMovie();
-        gameState.startGame(startingMovie);
-        gameView.updateGameState(gameState);
+        System.out.println("DEBUG: Random movie selected: " + (startingMovie != null ? startingMovie.getTitle() : "null"));
+
+        try {
+            gameState.startGame(startingMovie);
+            System.out.println("DEBUG: gameState.startGame() completed");
+        } catch (Exception e) {
+            System.out.println("DEBUG: Error in gameState.startGame()");
+            e.printStackTrace();
+            return;
+        }
+
+        try {
+            gameView.updateGameState(gameState);
+            System.out.println("DEBUG: gameView.updateGameState() completed");
+        } catch (Exception e) {
+            System.out.println("DEBUG: Error in gameView.updateGameState()");
+            e.printStackTrace();
+            return;
+        }
+
         gameView.showMessage("Game started with movie: " + startingMovie.getTitle());
 
-        startTurnTimer();
+        try {
+            startTurnTimer();
+            System.out.println("DEBUG: startTurnTimer() completed");
+        } catch (Exception e) {
+            System.out.println("DEBUG: Error in startTurnTimer()");
+            e.printStackTrace();
+        }
     }
 
-
     /**
-     * Handle movie selection
+     * Handle movie selection by genre
      *
      * @param movieTitle Selected movie title
-     * @param connection Connection type (actor, director, etc.)
      */
-    public void selectMovie(String movieTitle, String connection) {
+    public void selectMovieByGenre(String movieTitle) {
         List<Movie> movies = movieDatabase.findMoviesByTitle(movieTitle);
 
         if (movies.isEmpty()) {
@@ -127,39 +183,97 @@ public class GameController {
         }
 
         Movie selectedMovie = movies.get(0);
-        boolean success = gameState.selectMovie(selectedMovie, connection);
+        Movie currentMovie = gameState.getCurrentMovie();
+
+        // Check if the selected movie shares any genre with the current movie
+        boolean hasSharedGenre = false;
+        String sharedGenre = null;
+        for (String genre : selectedMovie.getGenres()) {
+            if (currentMovie.getGenres().contains(genre)) {
+                hasSharedGenre = true;
+                sharedGenre = genre;
+                break;
+            }
+        }
+
+        if (!hasSharedGenre) {
+            gameView.showError("Selected movie does not share any genre with the current movie.");
+            return;
+        }
+
+        // Use the existing selectMovie method with a genre connection
+        boolean success = gameState.selectMovie(selectedMovie, "genre", sharedGenre);
 
         if (success) {
+            resetTurnTimer();
             gameView.updateGameState(gameState);
 
             if (gameState.getCurrentState() == GameState.State.GAME_OVER) {
                 endGame();
-            } else {
-                resetTurnTimer();
             }
         } else {
             gameView.showError("Invalid selection. Please try again.");
         }
     }
-    // new method
-    public void setPlayerWinConditionByPerson(Player player, String role, String name, int count) {
-        main.model.Player.WinCondition winCond = new Player.GenreWinCondition.PersonWinCondition(role, name, count);
-        gameState.setPlayerWinCondition(player, winCond);
 
-        if (gameState.getCurrentState() == GameState.State.PLAYING) {
-            startGame();
+    /**
+     * Handle movie selection by person
+     *
+     * @param movieTitle Selected movie title
+     * @param connectionType Connection type (actor, director, etc.)
+     * @param personName Name of the person making the connection
+     */
+    public void selectMovieByPerson(String movieTitle, String connectionType, String personName) {
+        List<Movie> movies = movieDatabase.findMoviesByTitle(movieTitle);
+
+        if (movies.isEmpty()) {
+            gameView.showError("Movie not found: " + movieTitle);
+            return;
+        }
+
+        Movie selectedMovie = movies.get(0);
+
+        // First check if the connection actually exists
+        if (!gameState.verifyConnection(gameState.getCurrentMovie(), selectedMovie, connectionType, personName)) {
+            gameView.showError("Invalid connection. " + personName + " is not a " + connectionType + " in both movies.");
+            return;
+        }
+
+        // Use the existing selectMovie method with person-specific connection
+        boolean success = gameState.selectMovie(selectedMovie, connectionType, personName);
+
+        if (success) {
+            resetTurnTimer();
+            gameView.updateGameState(gameState);
+
+            if (gameState.getCurrentState() == GameState.State.GAME_OVER) {
+                endGame();
+            }
+        } else {
+            gameView.showError("Invalid selection. Person connection may have been used too many times.");
         }
     }
 
+    /**
+     * Handle movie selection (backward compatibility - not used with new logic)
+     *
+     * @param movieTitle Selected movie title
+     * @param connection Connection type (actor, director, etc.)
+     */
+    public void selectMovie(String movieTitle, String connection) {
+        // This method is now handled by selectMovieByGenre or selectMovieByPerson
+        gameView.showError("Please use the connection method you selected at the beginning.");
+    }
 
     /**
      * Start the turn timer
      */
-    private void startTurnTimer() {
+    public void startTurnTimer() {
         if (turnTimer != null) {
             turnTimer.cancel();
         }
 
+        timerPaused = false; // Reset pause flag
         turnTimer = new Timer();
         turnTimer.schedule(new TimerTask() {
             private int secondsLeft = TURN_TIME_SECONDS;
@@ -167,14 +281,16 @@ public class GameController {
             @Override
             public void run() {
                 if (secondsLeft > 0) {
-                    gameView.updateTimer(secondsLeft);
+                    if (!timerPaused) { // Only update display when not paused
+                        gameView.updateTimer(secondsLeft);
+                    }
                     secondsLeft--;
                 } else {
                     handleTimeUp();
                     cancel();
                 }
             }
-        }, 0, 1000); // Update every second
+        }, 0, 1000);
     }
 
     /**
@@ -189,6 +305,15 @@ public class GameController {
      */
     private void handleTimeUp() {
         if (gameState.getCurrentState() == GameState.State.PLAYING) {
+            // Stop the timer first
+            if (turnTimer != null) {
+                turnTimer.cancel();
+                turnTimer = null;
+            }
+
+            // Clear any remaining timer display
+            System.out.println(); // Move to a new line
+
             Player winner = (gameState.getCurrentPlayer() == gameState.getPlayer1())
                     ? gameState.getPlayer2() : gameState.getPlayer1();
 
@@ -211,12 +336,11 @@ public class GameController {
             winner = gameState.getPlayer1();
         } else if (gameState.getPlayer2().hasWon()) {
             winner = gameState.getPlayer2();
-        } else {
-            winner = (gameState.getCurrentPlayer() == gameState.getPlayer1())
-                    ? gameState.getPlayer2() : gameState.getPlayer1();
         }
 
-        gameView.showGameOver(winner);
+        if (winner != null) {
+            gameView.showGameOver(winner);
+        }
     }
 
     /**
@@ -237,5 +361,16 @@ public class GameController {
      */
     public List<Movie> getMovieSuggestions(String prefix, int maxResults) {
         return movieDatabase.findMoviesByTitlePrefix(prefix, maxResults);
+    }
+
+    // Add flag and methods
+    private boolean timerPaused = false;
+
+    public void pauseTimer() {
+        timerPaused = true;
+    }
+
+    public void resumeTimer() {
+        timerPaused = false;
     }
 }
