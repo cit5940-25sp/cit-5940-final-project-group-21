@@ -14,7 +14,6 @@ public class MovieNameGame {
     private static final String MOVIE_FILE_PATH = "data/tmdb_5000_movies.csv";
     private static final String CREDITS_FILE_PATH = "data/tmdb_5000_credits.csv";
 
-
     private MovieDatabase movieDatabase;
     private GameController gameController;
     private AutocompleteController autocompleteController;
@@ -55,16 +54,14 @@ public class MovieNameGame {
 
         // Connect views with controllers
         gameView.setGameController(gameController);
+        gameView.setAutocompleteComponents(autocompleteController, autocompleteView);
         autocompleteView.setAutocompleteController(autocompleteController);
 
-        // Set up movie selection listener
+        // Set up movie selection listener (simplified)
         autocompleteView.setMovieSelectedListener(movie -> {
-            // When a movie is selected from autocomplete, inform the game controller
+            // When a movie is selected from autocomplete, just return it
+            // The actual game logic is handled in GameView
             System.out.println("Selected: " + movie.getTitle());
-
-            // In a real implementation, you would need to get the connection type from the user
-            String connectionType = "actor"; // Example connection type
-            gameController.selectMovie(movie.getTitle(), connectionType);
         });
     }
 
