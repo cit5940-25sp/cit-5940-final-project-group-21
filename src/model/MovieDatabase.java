@@ -9,10 +9,6 @@ import org.json.*;
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 
-
-
-
-
 /**
  * Movie database class responsible for loading and managing movie data.
  * Provides movie search and filtering capabilities.
@@ -21,6 +17,7 @@ public class MovieDatabase {
     private List<Movie> movies;
     private Map<String, List<Movie>> genreIndex;
     private Map<String, List<Movie>> titlePrefixIndex;
+    private boolean DEBUG_MODE = false; // 设置为false以关闭调试信息
 
     /**
      * Constructor to initialize the movie database
@@ -41,7 +38,6 @@ public class MovieDatabase {
         movies.clear();
         genreIndex.clear();
         titlePrefixIndex.clear();
-
 
         try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
             String[] line;
@@ -70,42 +66,18 @@ public class MovieDatabase {
                         titlePrefixIndex.computeIfAbsent(prefix, k -> new ArrayList<>()).add(movie);
                     }
                 } catch (Exception e) {
-                    System.err.println("Error parsing line: " + Arrays.toString(line));
-                    e.printStackTrace();
+                    if (DEBUG_MODE) {
+                        System.err.println("Error parsing line: " + Arrays.toString(line));
+                        e.printStackTrace();
+                    }
                 }
             }
         }
 
-
-        System.out.println("Loaded " + movies.size() + " movies");
-        System.out.println("Genres loaded: " + genreIndex.keySet());
-
-    }
-
-    /**
-     * Parse a CSV line and create a Movie object
-     *
-     * @param line CSV line
-     * @return Movie object, or null if parsing fails
-     */
-    private Movie parseMovieLine(String line) {
-        // Simple CSV parsing, doesn't handle commas within quotes
-        // A real project should use a robust CSV parser
-        String[] parts = line.split(",");
-        if (parts.length < 19) return null;
-
-        int id = Integer.parseInt(parts[3]);
-        String title = parts[17];
-        String releaseDate = parts[11];
-
-        // Parse genres JSON field
-        String genresJson = parts[1];
-        List<String> genres = parseGenres(genresJson);
-
-        String overview = parts[7];
-        double voteAverage = Double.parseDouble(parts[18]);
-
-        return new Movie(id, title, releaseDate, genres, overview, voteAverage);
+        if (DEBUG_MODE) {
+            System.out.println("Loaded " + movies.size() + " movies");
+            System.out.println("Genres loaded: " + genreIndex.keySet());
+        }
     }
 
     /**
@@ -114,8 +86,6 @@ public class MovieDatabase {
      * @param genresJson JSON string of genres field
      * @return List of genre names
      */
-
-
     private List<String> parseGenres(String genresJson) {
         List<String> genres = new ArrayList<>();
         try {
@@ -127,11 +97,156 @@ public class MovieDatabase {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Failed to parse genres: " + genresJson);
+            if (DEBUG_MODE) {
+                System.err.println("Failed to parse genres: " + genresJson);
+            }
         }
         return genres;
     }
 
+    /**
+     * Load credits from CSV with CSVReader
+     *
+     * @param filePath Credits CSV file path
+     * @throws IOException If file reading fails
+     */
+    public void loadCreditsFromCSV(String filePath) throws IOException {
+        if (DEBUG_MODE) {
+            System.out.println("DEBUG: Starting to load credits from " + filePath);
+        }
+
+        Map<Integer, Movie> movieMap = movies.stream()
+                .collect(Collectors.toMap(Movie::getId, m -> m));
+
+        if (DEBUG_MODE) {
+            System.out.println("DEBUG: Created movie map with " + movieMap.size() + " movies");
+        }
+
+        int processed = 0;
+        int successful = 0;
+        int errorCount = 0;
+
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            boolean isFirstLine = true;
+
+            while ((line = br.readLine()) != null) {
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue; // Skip header
+                }
+
+                processed++;
+
+                try {
+                    // 简单的CSV解析 - 更健壮的方式
+                    String[] parts = parseCSVLine(line);
+
+                    if (parts.length < 4) {
+                        errorCount++;
+                        continue;
+                    }
+
+                    int movieId = Integer.parseInt(parts[0]);
+                    Movie movie = movieMap.get(movieId);
+                    if (movie == null) {
+                        continue;
+                    }
+
+                    // Parse cast (column 2)
+                    String castJson = parts[2];
+                    if (castJson != null && !castJson.trim().isEmpty()) {
+                        try {
+                            JSONArray castArray = new JSONArray(castJson);
+                            List<String> actors = new ArrayList<>();
+                            for (int i = 0; i < Math.min(castArray.length(), 5); i++) {
+                                JSONObject castMember = castArray.getJSONObject(i);
+                                actors.add(castMember.getString("name"));
+                            }
+                            movie.setActors(actors);
+                        } catch (JSONException e) {
+                            errorCount++;
+                            if (DEBUG_MODE) {
+                                System.out.println("DEBUG: JSON error for cast: " + e.getMessage());
+                            }
+                        }
+                    }
+
+                    // Parse crew (column 3)
+                    String crewJson = parts[3];
+                    if (crewJson != null && !crewJson.trim().isEmpty()) {
+                        try {
+                            JSONArray crewArray = new JSONArray(crewJson);
+                            List<String> directors = new ArrayList<>();
+                            List<String> writers = new ArrayList<>();
+                            List<String> composers = new ArrayList<>();
+
+                            for (int i = 0; i < crewArray.length(); i++) {
+                                JSONObject crewMember = crewArray.getJSONObject(i);
+                                String job = crewMember.getString("job");
+                                String name = crewMember.getString("name");
+                                switch (job) {
+                                    case "Director" -> directors.add(name);
+                                    case "Writer" -> writers.add(name);
+                                    case "Original Music Composer" -> composers.add(name);
+                                }
+                            }
+
+                            movie.setDirectors(directors);
+                            movie.setWriters(writers);
+                            movie.setComposers(composers);
+
+                            successful++;
+                        } catch (JSONException e) {
+                            errorCount++;
+                            if (DEBUG_MODE) {
+                                System.out.println("DEBUG: JSON error for crew: " + e.getMessage());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    errorCount++;
+                    if (DEBUG_MODE) {
+                        System.err.println("DEBUG: Error processing line " + processed + ": " + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        if (DEBUG_MODE) {
+            System.out.println("DEBUG: Finished loading credits");
+            System.out.println("DEBUG: Processed " + processed + " lines");
+            System.out.println("DEBUG: Successfully processed " + successful + " movies");
+            System.out.println("DEBUG: Errors: " + errorCount);
+        }
+    }
+
+    /**
+     * 简单的CSV行解析方法，更健壮地处理引号
+     */
+    private String[] parseCSVLine(String line) {
+        List<String> result = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == ',' && !inQuotes) {
+                result.add(current.toString());
+                current = new StringBuilder();
+            } else {
+                current.append(c);
+            }
+        }
+
+        // 添加最后一个字段
+        result.add(current.toString());
+
+        return result.toArray(new String[0]);
+    }
 
     /**
      * Get all movies in the database
@@ -223,57 +338,4 @@ public class MovieDatabase {
         int randomIndex = (int) (Math.random() * movies.size());
         return movies.get(randomIndex);
     }
-
-    //for information regarding identity: actors/writers/directors/compositors
-
-    public void loadCreditsFromCSV(String filePath) throws IOException {
-        Map<Integer, Movie> movieMap = movies.stream()
-                .collect(Collectors.toMap(Movie::getId, m -> m));
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-            String line = reader.readLine(); // skip header
-
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",", 4);
-                if (parts.length < 4) continue;
-
-                int movieId = Integer.parseInt(parts[0]);
-                Movie movie = movieMap.get(movieId);
-                if (movie == null) continue;
-
-                try {
-                    JSONArray castArray = new JSONArray(parts[2]);
-                    List<String> actors = new ArrayList<>();
-                    for (int i = 0; i < Math.min(castArray.length(), 5); i++) {
-                        JSONObject castMember = castArray.getJSONObject(i);
-                        actors.add(castMember.getString("name"));
-                    }
-                    movie.setActors(actors);
-
-                    JSONArray crewArray = new JSONArray(parts[3]);
-                    List<String> directors = new ArrayList<>();
-                    List<String> writers = new ArrayList<>();
-                    List<String> composers = new ArrayList<>();
-
-                    for (int i = 0; i < crewArray.length(); i++) {
-                        JSONObject crewMember = crewArray.getJSONObject(i);
-                        String job = crewMember.getString("job");
-                        String name = crewMember.getString("name");
-                        switch (job) {
-                            case "Director" -> directors.add(name);
-                            case "Writer" -> writers.add(name);
-                            case "Original Music Composer" -> composers.add(name);
-                        }
-                    }
-
-                    movie.setDirectors(directors);
-                    movie.setWriters(writers);
-                    movie.setComposers(composers);
-                } catch (JSONException e) {
-                    System.err.println("JSON error for movie ID: " + movieId);
-                }
-            }
-        }
-    }
-
 }
