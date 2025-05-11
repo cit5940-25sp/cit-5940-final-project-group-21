@@ -4,6 +4,8 @@ package main.view;
 import main.model.Movie;
 import main.controller.AutocompleteController;
 
+import main.controller.GameController;
+
 import java.util.List;
 
 /**
@@ -13,6 +15,7 @@ import java.util.List;
 public class AutocompleteView {
     private AutocompleteController autocompleteController;
     private MovieSelectedListener movieSelectedListener;
+    private GameController gameController;
 
     /**
      * Constructor for the AutocompleteView
@@ -28,6 +31,16 @@ public class AutocompleteView {
     public void setAutocompleteController(AutocompleteController autocompleteController) {
         this.autocompleteController = autocompleteController;
     }
+
+    /**
+     * Set the game controller
+     *
+     * @param gameController Game controller
+     */
+    public void setGameController(GameController gameController) {
+        this.gameController = gameController;
+    }
+
 
     /**
      * Set the movie selected listener

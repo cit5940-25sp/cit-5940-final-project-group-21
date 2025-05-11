@@ -4,6 +4,7 @@ import main.model.GameState;
 import main.model.Movie;
 import main.model.Player;
 import main.controller.GameController;
+import main.controller.AutocompleteController;
 
 import java.util.List;
 import java.util.Set;
@@ -16,6 +17,9 @@ import java.util.Scanner;
 public class GameView {
     private GameController gameController;
     private Scanner scanner;
+    private AutocompleteController autocompleteController;
+    private AutocompleteView autocompleteView;
+    private volatile boolean gameInProgress = false;
 
     /**
      * Constructor for the GameView
@@ -34,6 +38,17 @@ public class GameView {
     }
 
     /**
+     * Set autocomplete components
+     *
+     * @param controller Autocomplete controller
+     * @param view Autocomplete view
+     */
+    public void setAutocompleteComponents(AutocompleteController controller, AutocompleteView view) {
+        this.autocompleteController = controller;
+        this.autocompleteView = view;
+    }
+
+    /**
      * Display the main menu and handle user input
      */
     public void showMainMenu() {
@@ -44,19 +59,24 @@ public class GameView {
         System.out.println("2. Exit");
         System.out.print("Enter your choice: ");
 
-        int choice = getIntInput();
-        switch (choice) {
-            case 1:
-                startNewGame();
-                break;
-            case 2:
-                System.out.println("Goodbye!");
-                System.exit(0);
-                break;
-            default:
-                System.out.println("Invalid choice. Please try again.");
-                showMainMenu();
-                break;
+        try {
+            int choice = getIntInput();
+            switch (choice) {
+                case 1:
+                    startNewGame();
+                    break;
+                case 2:
+                    System.out.println("Goodbye!");
+                    System.exit(0);
+                    break;
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+                    showMainMenu();
+                    break;
+            }
+        } catch (Exception e) {
+            System.out.println("Error reading input. Please try again.");
+            showMainMenu();
         }
     }
 
@@ -64,6 +84,7 @@ public class GameView {
      * Start a new game by getting player information
      */
     private void startNewGame() {
+        gameInProgress = true;
         System.out.println("\n--- Player 1 ---");
         System.out.print("Enter name: ");
         String player1Name = scanner.nextLine();
@@ -84,85 +105,40 @@ public class GameView {
      * @param genres Available genres
      */
     public void showWinConditionSelection(Player player, Set<String> genres) {
-        System.out.println("\n--- Win Condition for " + player.getName() + " ---");
+        System.out.println("\n--- Connection Method for " + player.getName() + " ---");
+        System.out.println("How do you want to connect movies?");
 
-        System.out.println("Select win condition type:");
-        System.out.println("1. Genre (e.g., 3 Horror movies)");
-        System.out.println("2. Person (e.g., 3 movies with actor X)");
+        System.out.println("Select connection method:");
+        System.out.println("1. Genre (connect by same genre)");
+        System.out.println("2. Person (connect by shared actor/director/writer/composer)");
         System.out.print("Enter your choice (1 or 2): ");
         int typeChoice = getIntInput();
 
         if (typeChoice == 1) {
-            // === Genre-based win condition ===
-            System.out.println("Available genres:");
-            int i = 1;
-            String[] genreArray = genres.toArray(new String[0]);
-            for (String genre : genreArray) {
-                System.out.println(i + ". " + genre);
-                i++;
-            }
-
-            System.out.print("Select genre (1-" + genres.size() + "): ");
-            int genreChoice = getIntInput();
-            if (genreChoice < 1 || genreChoice > genres.size()) {
-                System.out.println("Invalid choice. Please try again.");
-                showWinConditionSelection(player, genres);
-                return;
-            }
-
-            String selectedGenre = genreArray[genreChoice - 1];
-            System.out.print("How many " + selectedGenre + " movies to win (1-5): ");
+            // Ask for target count
+            System.out.print("How many movies to win (1-5): ");
             int count = getIntInput();
             if (count < 1 || count > 5) {
                 System.out.println("Invalid count. Please choose between 1 and 5.");
                 showWinConditionSelection(player, genres);
                 return;
             }
-
-            gameController.setPlayerWinCondition(player, selectedGenre, count);
-
+            gameController.setPlayerConnectionType(player, "genre", count);
         } else if (typeChoice == 2) {
-            // === Person-based win condition ===
-            System.out.println("Select role:");
-            System.out.println("1. Actor");
-            System.out.println("2. Director");
-            System.out.println("3. Writer");
-            System.out.println("4. Composer");
-            System.out.print("Enter role (1-4): ");
-            int roleChoice = getIntInput();
-            String role = null;
-
-            switch (roleChoice) {
-                case 1 -> role = "actor";
-                case 2 -> role = "director";
-                case 3 -> role = "writer";
-                case 4 -> role = "composer";
-                default -> {
-                    System.out.println("Invalid role. Please try again.");
-                    showWinConditionSelection(player, genres);
-                    return;
-                }
-            }
-
-            System.out.print("Enter full name of the " + role + ": ");
-            String name = scanner.nextLine();
-
-            System.out.print("How many movies with " + name + " (" + role + ") to win (1-5): ");
+            // Ask for target count
+            System.out.print("How many movies to win (1-5): ");
             int count = getIntInput();
             if (count < 1 || count > 5) {
                 System.out.println("Invalid count. Please choose between 1 and 5.");
                 showWinConditionSelection(player, genres);
                 return;
             }
-
-            gameController.setPlayerWinConditionByPerson(player, role, name, count);
-
+            gameController.setPlayerConnectionType(player, "person", count);
         } else {
             System.out.println("Invalid input. Please try again.");
             showWinConditionSelection(player, genres);
         }
     }
-
 
     /**
      * Update the displayed game state
@@ -177,22 +153,27 @@ public class GameView {
         Player player1 = gameState.getPlayer1();
         Player player2 = gameState.getPlayer2();
 
-        // Display player information
+        // Display player information with progress
         System.out.println("--- " + player1.getName() + " ---");
-        System.out.println("Win condition: " + player1.getWinCondition().getDescription());
-        System.out.println("Progress: " + player1.getWinProgress() + "/" +
-                player1.getWinCondition().getRequiredCount());
+        System.out.println("Connection method: " + gameController.getPlayerConnectionType(player1));
+        System.out.println("Progress: (" + player1.getWinProgress() + "/" + player1.getTargetCount() + ")");
 
         System.out.println("\n--- " + player2.getName() + " ---");
-        System.out.println("Win condition: " + player2.getWinCondition().getDescription());
-        System.out.println("Progress: " + player2.getWinProgress() + "/" +
-                player2.getWinCondition().getRequiredCount());
+        System.out.println("Connection method: " + gameController.getPlayerConnectionType(player2));
+        System.out.println("Progress: (" + player2.getWinProgress() + "/" + player2.getTargetCount() + ")");
 
         // Display current movie
         Movie currentMovie = gameState.getCurrentMovie();
         System.out.println("\nCurrent movie: " + currentMovie.getTitle() +
                 " (" + currentMovie.getReleaseYear() + ")");
         System.out.println("Genres: " + String.join(", ", currentMovie.getGenres()));
+
+        // Show available connections
+        System.out.println("\nAvailable connections:");
+        System.out.println("Actors: " + (currentMovie.getActors().isEmpty() ? "None" : String.join(", ", currentMovie.getActors())));
+        System.out.println("Directors: " + (currentMovie.getDirectors().isEmpty() ? "None" : String.join(", ", currentMovie.getDirectors())));
+        System.out.println("Writers: " + (currentMovie.getWriters().isEmpty() ? "None" : String.join(", ", currentMovie.getWriters())));
+        System.out.println("Composers: " + (currentMovie.getComposers().isEmpty() ? "None" : String.join(", ", currentMovie.getComposers())));
 
         // Display recent movies
         System.out.println("\nRecent movies:");
@@ -212,6 +193,11 @@ public class GameView {
         // Display current player's turn
         Player currentPlayer = gameState.getCurrentPlayer();
         System.out.println("\n--- " + currentPlayer.getName() + "'s turn ---");
+        System.out.println("Your connection method: " + gameController.getPlayerConnectionType(currentPlayer));
+        System.out.println("Your progress: (" + currentPlayer.getWinProgress() + "/" + currentPlayer.getTargetCount() + ")");
+
+        // Start the turn immediately
+        handlePlayerTurn();
     }
 
     /**
@@ -220,7 +206,13 @@ public class GameView {
      * @param secondsLeft Seconds left in the turn
      */
     public void updateTimer(int secondsLeft) {
-        System.out.print("\rTime left: " + secondsLeft + " seconds    ");
+        // Only update if timer is not paused
+        if (!gameController.isTimerPaused()) {
+            // Clear the line and print timer
+            System.out.print("\r                                        "); // Clear line
+            System.out.print("\rTime left: " + secondsLeft + " seconds");
+            System.out.flush();
+        }
     }
 
     /**
@@ -229,15 +221,30 @@ public class GameView {
      * @param winner Winning player
      */
     public void showGameOver(Player winner) {
+        gameInProgress = false;
+
         System.out.println("\n======================================");
         System.out.println("            GAME OVER");
         System.out.println("======================================");
         System.out.println(winner.getName() + " wins!");
+        System.out.println("======================================");
 
-        System.out.println("\nPress Enter to return to main menu...");
-        scanner.nextLine();
+        // 创建一个新的线程来等待任何键并返回主菜单
+        new Thread(() -> {
+            try {
+                System.out.println("Press Enter to return to main menu...");
+                System.in.read(); // 简单地等待任何输入
+                System.out.println("\nReturning to main menu...");
 
-        showMainMenu();
+                // 使用新的 Scanner 实例来避免线程问题
+                scanner = new Scanner(System.in);
+                showMainMenu();
+            } catch (Exception e) {
+                e.printStackTrace();
+                // 如果出错，直接返回主菜单
+                showMainMenu();
+            }
+        }).start();
     }
 
     /**
@@ -286,5 +293,113 @@ public class GameView {
         } catch (NumberFormatException e) {
             return -1;
         }
+    }
+
+    /**
+     * Get movie title with autocomplete
+     *
+     * @return Movie title entered by user
+     */
+    private String getMovieTitleWithAutocomplete() {
+        System.out.println("\nEnter movie title (type and press Enter):");
+
+        while (gameInProgress) {
+            String input = scanner.nextLine().trim();
+
+            if (!input.isEmpty()) {
+                // Show suggestions based on input
+                List<Movie> suggestions = autocompleteController.getSuggestions(input);
+
+                if (!suggestions.isEmpty()) {
+                    System.out.println("\nSuggestions:");
+                    for (int i = 0; i < suggestions.size(); i++) {
+                        Movie movie = suggestions.get(i);
+                        System.out.println((i + 1) + ". " + movie.getTitle() + " (" + movie.getReleaseYear() + ")");
+                    }
+
+                    System.out.println("\nEnter selection number or type new search:");
+                    String response = scanner.nextLine().trim();
+
+                    try {
+                        int selection = Integer.parseInt(response);
+                        if (selection > 0 && selection <= suggestions.size()) {
+                            return suggestions.get(selection - 1).getTitle();
+                        }
+                    } catch (NumberFormatException e) {
+                        // If not a number, treat as new search term
+                        if (!response.isEmpty()) {
+                            input = response;
+                            continue;
+                        }
+                    }
+                }
+
+                // If no suggestions or user provided exact title
+                return input;
+            }
+
+            System.out.println("Please enter a movie title:");
+        }
+
+        return ""; // 游戏已结束
+    }
+
+    /**
+     * Handle player turn input
+     */
+    public void handlePlayerTurn() {
+        // Get the current player and their connection type
+        Player currentPlayer = gameController.getCurrentPlayer();
+        String connectionType = gameController.getPlayerConnectionType(currentPlayer);
+
+        // Make sure timer starts for this turn
+        gameController.startTurnTimer();
+
+        // Pause timer immediately before getting input
+        gameController.pauseTimer();
+
+        // Clear line for clean input
+        System.out.println();
+
+        if (connectionType.equals("genre")) {
+            // Genre-based connection
+            System.out.println("You need to select a movie that shares a genre with the current movie.");
+
+            String movieTitle = getMovieTitleWithAutocomplete();
+
+            // Resume timer after getting input
+            gameController.resumeTimer();
+
+            // Call selectMovie for genre connection
+            if (!movieTitle.isEmpty()) {
+                gameController.selectMovieByGenre(movieTitle);
+            }
+
+        } else if (connectionType.equals("person")) {
+            // Person-based connection - system auto-detects connection
+            System.out.println("You need to select a movie that shares a person with the current movie.");
+            System.out.println("(The system will auto-detect and display the connection type)");
+
+            String movieTitle = getMovieTitleWithAutocomplete();
+
+            // Resume timer after getting input
+            gameController.resumeTimer();
+
+            // Call selectMovie for auto-detected person connection
+            if (!movieTitle.isEmpty()) {
+                gameController.selectMovieByPersonAutoDetect(movieTitle);
+            }
+        }
+    }
+
+    /**
+     * Validate if connection type is valid
+     *
+     * @param connection Connection type to validate
+     * @return true if valid, false otherwise
+     */
+    private boolean isValidConnection(String connection) {
+        return connection.equals("actor") || connection.equals("director") ||
+                connection.equals("writer") || connection.equals("composer");
     }
 }
