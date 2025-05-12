@@ -1,4 +1,4 @@
-package main.Test;
+package main.test;
 
 import main.model.GameState;
 import main.model.Movie;

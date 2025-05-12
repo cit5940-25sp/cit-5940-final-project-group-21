@@ -22,6 +22,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * TUI for the Movie Name Game using Lanterna based on Harry's template.
+ * Handles all rendering, user input, countdown timer, error display,
+ * and game progression logic using the MVC architecture.
+ */
+
 public class TerminalGameUI implements Runnable {
     private final Screen screen;
     private final GameController gameController;
@@ -535,3 +541,4 @@ public class TerminalGameUI implements Runnable {
         secondsRemaining = GameController.TURN_TIME_SECONDS;
     }
 }
+
