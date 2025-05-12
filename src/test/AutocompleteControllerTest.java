@@ -50,13 +50,18 @@ public class AutocompleteControllerTest {
                     ",en,Test Movie,\"Test overview\",10.0,\"\",\"\",2023-01-01,2000000,120,\"\"" +
                     ",Released,\"Test tagline\",Test Movie,7.5,100\n");
             writer.write("2000000,\"[{\"\"name\"\":\"\"Comedy\"\"}]\",http://test2.com,2,\"" +
-                    ",en,The Adventure,\"Test overview 2\",8.0,\"\",\"\",2023-02-01,3000000,110,\"" +
+                    ",en,The Adventure,\"Test overview 2\",8.0,\"\",\"\"," +
+                    "2023-02-01,3000000,110,\"" +
                     ",Released,\"Test tagline 2\",The Adventure,8.0,200\n");
-            writer.write("3000000,\"[{\"\"name\"\":\"\"Drama\"\"}]\",http://test3.com,3,\"\"" +
-                    ",en,Another Title,\"Test overview 3\",9.0,\"\",\"\",2023-03-01,4000000,130,\"\"" +
+            writer.write("3000000,\"[{\"\"name\"\":\"\"Drama\"\"}]\"," +
+                    "http://test3.com,3,\"\"" +
+                    ",en,Another Title,\"Test overview 3\",9.0,\"\",\"\"," +
+                    "2023-03-01,4000000,130,\"\"" +
                     ",Released,\"Test tagline 3\",Another Title,8.5,300\n");
-            writer.write("4000000,\"[{\"\"name\"\":\"\"Thriller\"\"}]\",http://test4.com,4,\"\"" +
-                    ",en,Test Another,\"Test overview 4\",7.0,\"\",\"\",2023-04-01,5000000,100,\"\"" +
+            writer.write("4000000,\"[{\"\"name\"\":\"\"Thriller\"\"}]\"," +
+                    "http://test4.com,4,\"\"" +
+                    ",en,Test Another,\"Test overview 4\",7.0,\"\",\"\"," +
+                    "2023-04-01,5000000,100,\"\"" +
                     ",Released,\"Test tagline 4\",Test Another,7.0,400\n");
         } catch (IOException e) {
             System.err.println("Failed to create test movies CSV: " + e.getMessage());
@@ -155,8 +160,10 @@ public class AutocompleteControllerTest {
     public void testGetSuggestionsWithNonMatchingPrefix() {
         try {
             movieDatabase.loadMoviesFromCSV(testMoviesCsv);
-            List<Movie> suggestions = autocompleteController.getSuggestions("XYZ");
-            assertTrue("Should not return suggestions for non-matching prefix", suggestions.isEmpty());
+            List<Movie> suggestions =
+                    autocompleteController.getSuggestions("XYZ");
+            assertTrue("Should not return suggestions for non-matching prefix",
+                    suggestions.isEmpty());
         } catch (Exception e) {
             fail("Exception should not be thrown: " + e.getMessage());
         }

@@ -8,12 +8,23 @@ import org.junit.Test;
 import java.util.Arrays;
 
 import static org.junit.Assert.*;
-
+/**
+ * Unit tests for the Player class.
+ * Verifies player setup, state transitions, movie tracking, and win condition logic.
+ *
+ * Tests also include connection type handling, target progress, and reset behavior.
+ *
+ * @author Group 21
+ * @version May 12, 2025
+ */
 public class PlayerTest {
     private Player player;
     private Movie movie1;
     private Movie movie2;
 
+    /**
+     * Creates a new Player and test Movies for each test.
+     */
     @Before
     public void setUp() {
         player = new Player("TestPlayer");

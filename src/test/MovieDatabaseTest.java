@@ -11,7 +11,15 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.*;
-
+/**
+ * Unit tests for the MovieDatabase class.
+ * These tests verify movie loading, searching, indexing, and retrieval functionality.
+ *
+ * CSV-based test movies and credits are generated locally for isolated testing.
+ *
+ * @author Group 21
+ * @version May 12, 2025
+ */
 public class MovieDatabaseTest {
 
     private MovieDatabase movieDatabase;

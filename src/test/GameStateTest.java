@@ -11,6 +11,16 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
+/**
+ * Unit tests for the GameState class.
+ * Verifies the correctness of player handling, game transitions,
+ * movie selection logic, and connection validations.
+ *
+ * Covers both genre and person-based connection rules and edge conditions.
+ *
+ * @author Group 21
+ * @version May 12, 2025
+ */
 public class GameStateTest {
     private GameState gameState;
     private Movie testMovie;

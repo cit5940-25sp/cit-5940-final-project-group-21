@@ -7,7 +7,16 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
-
+/**
+ * Unit tests for the Movie class.
+ * Tests cover movie property accessors, mutators,
+ * and behaviors like genre checking, equality, and string formatting.
+ *
+ * Each test ensures individual Movie fields and methods function as expected.
+ *
+ * @author Group 21
+ * @version May 12, 2025
+ */
 public class MovieTest {
 
     @Test

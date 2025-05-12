@@ -15,7 +15,17 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
-
+/**
+ * Integration tests for the full Movie Name Game flow.
+ * Validates the interaction between GameController, MovieDatabase,
+ * and AutocompleteController using simulated movie and credit datasets.
+ *
+ * Covers game state transitions, win conditions, invalid moves,
+ * autocomplete functionality, and timer expiration logic.
+ *
+ * @author Group 21
+ * @version May 12, 2025
+ */
 public class MovieNameGameIntegrationTest {
 
     private MovieDatabase movieDatabase;

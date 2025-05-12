@@ -12,11 +12,15 @@ import java.util.Set;
 
 /**
  * Controller class for the Movie Name Game.
- * Handles game logic and exposes state for the Terminal-based UI.
+ * Handles high-level game logic and exposes state for the UI layer.
+ * Interacts with MovieDatabase and GameState.
+ *
+ * @author Group 21
+ * @version May 12, 2025
  */
 public class GameController {
     /**
-     * Turn time (seconds) for each player; used by TerminalGameUI
+     * Turn time limit in seconds for each player's move.
      */
     public static final int TURN_TIME_SECONDS = 30;
 
@@ -24,9 +28,9 @@ public class GameController {
     private final MovieDatabase movieDatabase;
 
     /**
-     * Constructor for the GameController.
+     * Constructs a GameController instance with a given MovieDatabase.
      *
-     * @param movieDatabase Movie database
+     * @param movieDatabase Movie database to be used in gameplay
      */
     public GameController(MovieDatabase movieDatabase) {
         this.movieDatabase = movieDatabase;
@@ -34,10 +38,10 @@ public class GameController {
     }
 
     /**
-     * Load movies and credits data.
+     * Loads movies and credits data from TMDB CSV files.
      *
-     * @param movieFilePath   Path to movie CSV file
-     * @param creditsFilePath Path to credits CSV file
+     * @param movieFilePath   File path for the movie metadata
+     * @param creditsFilePath File path for the movie credits
      */
     public void initialize(String movieFilePath, String creditsFilePath) {
         try {
@@ -49,7 +53,7 @@ public class GameController {
     }
 
     /**
-     * Get the current game state.
+     * Returns the current game state object.
      *
      * @return GameState instance
      */
@@ -58,56 +62,51 @@ public class GameController {
     }
 
     /**
-     * Get the current player whose turn it is.
+     * Returns the player whose turn it is.
      *
-     * @return Current Player
+     * @return Current player
      */
     public Player getCurrentPlayer() {
         return gameState.getCurrentPlayer();
     }
 
     /**
-     * Get a player's connection type: "genre" or "person".
+     * Gets the connection type used by a given player.
      *
-     * @param player Player instance
-     * @return Connection type string
+     * @param player Player to check
+     * @return Connection type string ("genre" or "person")
      */
     public String getPlayerConnectionType(Player player) {
         return player.getConnectionType();
     }
 
     /**
-     * Handle the event where time has run out for the current turn.
-     * Sets the other player as the winner and ends the game.
-     */
-    /**
-     * Handle the event where time has run out for the current turn.
-     * Sets the other player as the winner and ends the game.
+     * Called when the timer expires during a player's turn.
+     * Automatically sets the other player as the winner.
      */
     public void handleTimeUp() {
-        // 将当前玩家设为输家，另一个玩家设为赢家
         Player current = gameState.getCurrentPlayer();
         Player other = (current == gameState.getPlayer1()) ?
                 gameState.getPlayer2() : gameState.getPlayer1();
 
-        // 强制设置另一个玩家为胜利者
-        other.incrementProgress(); // 给另一个玩家增加一点分数以确保赢
+        // Give the other player an extra point to ensure a win
+        other.incrementProgress();
 
-        // If game isn't over already, set it to game over state
         if (gameState.getCurrentState() != GameState.State.GAME_OVER) {
             gameState.setState(GameState.State.GAME_OVER);
         }
     }
 
     /**
-     * Process movie selection by genre.
+     * Allows the current player to select a movie by genre.
      *
-     * @param movieTitle Selected movie title
-     * @return true if movie was successfully selected, false otherwise
+     * @param movieTitle Title of the selected movie
+     * @return true if the move was valid and accepted
      */
     public boolean selectMovieByGenre(String movieTitle) {
         List<Movie> movies = movieDatabase.findMoviesByTitle(movieTitle);
         Player current = gameState.getCurrentPlayer();
+
         if (!movies.isEmpty()) {
             boolean success = gameState.selectMovie(movies.get(0), "genre", null);
             if (success) {
@@ -123,14 +122,16 @@ public class GameController {
     }
 
     /**
-     * Process movie selection by person connection (auto-detected).
+     * Allows the current player to select a movie with a person-based connection.
+     * The system attempts to auto-detect the connection.
      *
-     * @param movieTitle Selected movie title
-     * @return true if movie was successfully selected, false otherwise
+     * @param movieTitle Title of the selected movie
+     * @return true if the move was valid and accepted
      */
     public boolean selectMovieByPersonAutoDetect(String movieTitle) {
         List<Movie> movies = movieDatabase.findMoviesByTitle(movieTitle);
         Player current = gameState.getCurrentPlayer();
+
         if (!movies.isEmpty()) {
             boolean success = gameState.selectMovie(movies.get(0), "person", null);
             if (success) {
@@ -146,7 +147,7 @@ public class GameController {
     }
 
     /**
-     * Get all available genres.
+     * Returns all unique genres available in the movie database.
      *
      * @return Set of genre strings
      */
@@ -155,32 +156,36 @@ public class GameController {
     }
 
     /**
-     * Get a random movie from the database.
+     * Selects and returns a random movie.
      *
-     * @return Random movie instance
+     * @return A randomly selected movie
      */
     public Movie getRandomMovie() {
         return movieDatabase.getRandomMovie();
     }
 
+    /**
+     * Adds a player to the game.
+     * Automatically advances to SETTING_WIN_CONDITIONS state after two players join.
+     *
+     * @param name Name of the new player
+     * @return true if the player was added
+     */
     public boolean addPlayer(String name) {
         boolean added = gameState.addPlayer(name);
-        // 如果刚加入了第二个玩家，就切换到“设置胜利条件”阶段
         if (added && gameState.getPlayer2() != null) {
             gameState.setState(GameState.State.SETTING_WIN_CONDITIONS);
         }
         return added;
-
     }
 
     /**
-     * Get recent movie history.
+     * Retrieves the most recent movie connections played.
      *
-     * @param limit Maximum number of movie connections to return
-     * @return List of movie connections
+     * @param limit Max number of entries to return
+     * @return List of recent MovieConnection records
      */
     public List<GameState.MovieConnection> getRecentMovieHistory(int limit) {
         return gameState.getRecentMovieHistory(limit);
     }
-
 }

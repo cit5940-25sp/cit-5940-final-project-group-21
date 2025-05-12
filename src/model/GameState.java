@@ -6,9 +6,18 @@ import java.util.ArrayList;
 import java.util.Map;
 
 /**
- * Represents the game state and manages game logic and rules.
+ * Represents the current state of the Movie Name Game and manages all gameplay rules and flow.
+ * Tracks players, current movie, round count, and verifies connections between movie selections.
+ * Also maintains a history of movie plays and win conditions.
+ *
+ * @author Group 21
+ * @version May 12, 2025
  */
 public class GameState {
+
+    /**
+     * Defines the different phases the game can be in.
+     */
     public enum State {
         WAITING_FOR_PLAYERS,
         SETTING_WIN_CONDITIONS,
@@ -25,15 +34,24 @@ public class GameState {
     private Map<String, Integer> personConnectionCounts;
     private boolean DEBUG_MODE = false;
 
-    // 添加电影历史和连接方式的跟踪
+    // Tracks history of all played movies and their connection details
     private List<MovieConnection> movieHistory;
 
-    // 电影连接类，存储两部电影之间的连接信息
+    /**
+     * Represents a record of a movie played and the reason it was valid (genre, actor, etc.).
+     */
     public static class MovieConnection {
         private Movie movie;
-        private String connectionType; // "genre", "actor", "director", etc.
-        private String connectionValue; // 具体的连接值，如 "Action" 或 "Tom Hanks"
+        private String connectionType;
+        private String connectionValue;
 
+        /**
+         * Constructs a MovieConnection record.
+         *
+         * @param movie           The movie that was selected.
+         * @param connectionType  The type of connection used (e.g., "genre", "actor").
+         * @param connectionValue The actual value of the connection (e.g., "Comedy", "Tom Hanks").
+         */
         public MovieConnection(Movie movie, String connectionType, String connectionValue) {
             this.movie = movie;
             this.connectionType = connectionType;
@@ -53,34 +71,43 @@ public class GameState {
         }
     }
 
+    /**
+     * Constructs a new GameState in the initial WAITING_FOR_PLAYERS phase.
+     */
     public GameState() {
         currentState = State.WAITING_FOR_PLAYERS;
         roundCount = 0;
         personConnectionCounts = new HashMap<>();
-        movieHistory = new ArrayList<>(); // 初始化电影历史列表
+        movieHistory = new ArrayList<>();
     }
 
     /**
-     * Add a player (up to 2 players).
+     * Adds a new player to the game. Only two players are allowed.
+     *
+     * @param name The name of the player to add.
+     * @return true if the player was added successfully; false if both slots are filled.
      */
     public boolean addPlayer(String name) {
         if (player1 == null) {
             player1 = new Player(name);
             return true;
-        } else if (player2 == null) {
-            player2 = new Player(name);
-            return true;
+        } else {
+            if (player2 == null) {
+                player2 = new Player(name);
+                return true;
+            }
         }
         return false;
     }
 
     /**
-     * Start a new game: only allowed when in SETTING_WIN_CONDITIONS.
+     * Starts the game with the given movie, resets progress, and enters PLAYING state.
+     *
+     * @param startingMovie The movie to begin the game with.
      */
     public void startGame(Movie startingMovie) {
         if (currentState != State.SETTING_WIN_CONDITIONS) {
-            throw new IllegalStateException(
-                    "Cannot start game, current state: " + currentState);
+            throw new IllegalStateException("Cannot start game, current state: " + currentState);
         }
         this.currentMovie = startingMovie;
         this.roundCount = 1;
@@ -88,27 +115,25 @@ public class GameState {
         player1.reset();
         player2.reset();
         personConnectionCounts.clear();
-        movieHistory.clear(); // 清空电影历史
-
-        // 添加第一部电影到历史中，没有连接信息
+        movieHistory.clear();
         movieHistory.add(new MovieConnection(startingMovie, null, null));
-
         this.currentState = State.PLAYING;
     }
 
     /**
-     * Player selects the next movie with a given connection.
+     * Applies a movie selection by the current player and checks for a valid connection.
      *
-     * @param movie           the movie chosen
-     * @param connectionType  "genre" or one of "actor", "director", "writer", "composer"
-     * @param connectionValue for genre: the genre string; for person: the person's name
-     * @return true if the move was valid and applied, false otherwise
+     * @param movie           The movie selected.
+     * @param connectionType  Type of connection ("genre" or "person").
+     * @param connectionValue Specific value of the connection (genre or name).
+     * @return true if the move was valid and applied, false otherwise.
      */
     public boolean selectMovie(Movie movie, String connectionType, String connectionValue) {
-        if (currentState != State.PLAYING) return false;
-        // Prevent reuse
-        if ((player1.getSelectedMovies().contains(movie)) ||
-                (player2.getSelectedMovies().contains(movie))) {
+        if (currentState != State.PLAYING) {
+            return false;
+        }
+
+        if ((player1.getSelectedMovies().contains(movie)) || (player2.getSelectedMovies().contains(movie))) {
             return false;
         }
 
@@ -116,21 +141,20 @@ public class GameState {
         boolean shouldIncrement = false;
         String actualConnectionValue = connectionValue;
 
+        // Handle genre-based connection
         if ("genre".equals(connectionType)) {
-            // 尝试找到共同的流派
             List<String> commonGenres = new ArrayList<>(currentMovie.getGenres());
             commonGenres.retainAll(movie.getGenres());
 
             if (!commonGenres.isEmpty()) {
                 validConnection = true;
                 shouldIncrement = true;
-                // 使用第一个共同流派作为连接值
                 actualConnectionValue = commonGenres.get(0);
             }
+
         } else if ("person".equals(connectionType)) {
-            // 自动检测共同的人物
             if (connectionValue == null) {
-                // 寻找共同演员
+                // Try to infer person connection if value not given
                 List<String> actorsA = currentMovie.getActors();
                 List<String> actorsB = movie.getActors();
                 for (String actor : actorsA) {
@@ -141,8 +165,6 @@ public class GameState {
                         break;
                     }
                 }
-
-                // 如果没找到共同演员，检查导演
                 if (!validConnection) {
                     List<String> directorsA = currentMovie.getDirectors();
                     List<String> directorsB = movie.getDirectors();
@@ -155,8 +177,6 @@ public class GameState {
                         }
                     }
                 }
-
-                // 如果仍未找到，检查编剧
                 if (!validConnection) {
                     List<String> writersA = currentMovie.getWriters();
                     List<String> writersB = movie.getWriters();
@@ -169,8 +189,6 @@ public class GameState {
                         }
                     }
                 }
-
-                // 最后检查作曲家
                 if (!validConnection) {
                     List<String> composersA = currentMovie.getComposers();
                     List<String> composersB = movie.getComposers();
@@ -184,7 +202,6 @@ public class GameState {
                     }
                 }
             } else {
-                // 验证特定的人物连接
                 validConnection = verifyConnection(currentMovie, movie, connectionType, connectionValue);
             }
 
@@ -198,8 +215,8 @@ public class GameState {
                     validConnection = false;
                 }
             }
+
         } else {
-            // 验证其他类型的连接
             validConnection = verifyConnection(currentMovie, movie, connectionType, connectionValue);
             if (validConnection) {
                 String key = connectionType + ":" + connectionValue;
@@ -213,52 +230,73 @@ public class GameState {
             }
         }
 
-        if (!validConnection) return false;
+        if (!validConnection) {
+            return false;
+        }
 
-        // 应用这一步
+        // Apply the move
         currentPlayer.addSelectedMovie(movie);
-        if (shouldIncrement) currentPlayer.incrementProgress();
-
-        // 将这部电影添加到历史中
+        if (shouldIncrement) {
+            currentPlayer.incrementProgress();
+        }
         movieHistory.add(new MovieConnection(movie, connectionType, actualConnectionValue));
-
         currentMovie = movie;
 
-        // 检查胜利
         if (currentPlayer.hasWon()) {
             currentState = State.GAME_OVER;
         } else {
             roundCount++;
         }
+
         return true;
     }
 
     /**
-     * 检查人物连接（actor/director/writer/composer）。
+     * Verifies a connection between two movies for a specific person role.
+     *
+     * @param from           Starting movie.
+     * @param to             Target movie.
+     * @param connectionType One of "actor", "director", "writer", "composer".
+     * @param personName     The name of the person to check.
+     * @return true if the connection is valid; false otherwise.
      */
-    public boolean verifyConnection(
-            Movie from, Movie to,
-            String connectionType, String personName) {
-
+    public boolean verifyConnection(Movie from, Movie to, String connectionType, String personName) {
         List<String> fromList;
         List<String> toList;
+
         switch (connectionType) {
-            case "actor":
-                fromList = from.getActors();    toList = to.getActors();    break;
-            case "director":
-                fromList = from.getDirectors(); toList = to.getDirectors(); break;
-            case "writer":
-                fromList = from.getWriters();   toList = to.getWriters();   break;
-            case "composer":
-                fromList = from.getComposers(); toList = to.getComposers(); break;
-            default:
+            case "actor": {
+                fromList = from.getActors();
+                toList = to.getActors();
+                break;
+            }
+            case "director": {
+                fromList = from.getDirectors();
+                toList = to.getDirectors();
+                break;
+            }
+            case "writer": {
+                fromList = from.getWriters();
+                toList = to.getWriters();
+                break;
+            }
+            case "composer": {
+                fromList = from.getComposers();
+                toList = to.getComposers();
+                break;
+            }
+            default: {
                 return false;
+            }
         }
         return fromList.contains(personName) && toList.contains(personName);
     }
 
     /**
-     * 获取最近的电影历史（最多limit部）
+     * Returns a sublist of the most recent movies played in the game.
+     *
+     * @param limit Maximum number of recent movies to return.
+     * @return A list of MovieConnection objects representing recent history.
      */
     public List<MovieConnection> getRecentMovieHistory(int limit) {
         int size = movieHistory.size();
@@ -266,7 +304,7 @@ public class GameState {
         return new ArrayList<>(movieHistory.subList(start, size));
     }
 
-    /* ------- 一系列 Getter / Setter / Helper ------- */
+    // ------------------------- Accessors and Utility -------------------------
 
     public State getCurrentState() { return currentState; }
 
@@ -284,7 +322,14 @@ public class GameState {
 
     public void setCurrentPlayer(Player p) { this.currentPlayer = p; }
 
+    /**
+     * Switches the active player to the other one.
+     */
     public void switchToNextPlayer() {
-        currentPlayer = (currentPlayer == player1) ? player2 : player1;
+        if (currentPlayer == player1) {
+            currentPlayer = player2;
+        } else {
+            currentPlayer = player1;
+        }
     }
 }

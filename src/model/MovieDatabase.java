@@ -10,17 +10,21 @@ import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 
 /**
- * Movie database class responsible for loading and managing movie data.
- * Provides movie search and filtering capabilities.
+ * Handles loading and indexing of movie data from TMDB datasets.
+ * Supports search by genre, title, and prefix for autocomplete features.
+ * Provides access to movie metadata and associated credits.
+ *
+ * @author Group 21
+ * @version May 12, 2025
  */
 public class MovieDatabase {
     private List<Movie> movies;
     private Map<String, List<Movie>> genreIndex;
     private Map<String, List<Movie>> titlePrefixIndex;
-    private boolean DEBUG_MODE = false; // 设置为false以关闭调试信息
+    private boolean debugMode = false;
 
     /**
-     * Constructor to initialize the movie database
+     * Constructs a new, empty movie database.
      */
     public MovieDatabase() {
         movies = new ArrayList<>();
@@ -29,10 +33,11 @@ public class MovieDatabase {
     }
 
     /**
-     * Load movie data from a CSV file
+     * Loads movie metadata from the given CSV file.
      *
-     * @param filePath CSV file path
-     * @throws IOException If file reading fails
+     * @param filePath Path to the TMDB 5000 movies CSV file
+     * @throws IOException if the file cannot be read
+     * @throws CsvValidationException if CSV is malformed
      */
     public void loadMoviesFromCSV(String filePath) throws IOException, CsvValidationException {
         movies.clear();
@@ -41,7 +46,7 @@ public class MovieDatabase {
 
         try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
             String[] line;
-            reader.readNext(); // skip header
+            reader.readNext(); // Skip header
 
             while ((line = reader.readNext()) != null) {
                 try {
@@ -66,7 +71,7 @@ public class MovieDatabase {
                         titlePrefixIndex.computeIfAbsent(prefix, k -> new ArrayList<>()).add(movie);
                     }
                 } catch (Exception e) {
-                    if (DEBUG_MODE) {
+                    if (debugMode) {
                         System.err.println("Error parsing line: " + Arrays.toString(line));
                         e.printStackTrace();
                     }
@@ -74,17 +79,18 @@ public class MovieDatabase {
             }
         }
 
-        if (DEBUG_MODE) {
+        if (debugMode) {
             System.out.println("Loaded " + movies.size() + " movies");
             System.out.println("Genres loaded: " + genreIndex.keySet());
         }
     }
 
     /**
-     * Parse the genres JSON field
+     * Parses genre names from the JSON-formatted genre field.
+     * The way to parse information from csv is suggested by ChatGPT.
      *
-     * @param genresJson JSON string of genres field
-     * @return List of genre names
+     * @param genresJson Raw JSON string containing genre objects
+     * @return A list of genre names extracted from JSON
      */
     private List<String> parseGenres(String genresJson) {
         List<String> genres = new ArrayList<>();
@@ -97,7 +103,7 @@ public class MovieDatabase {
                 }
             }
         } catch (Exception e) {
-            if (DEBUG_MODE) {
+            if (debugMode) {
                 System.err.println("Failed to parse genres: " + genresJson);
             }
         }
@@ -105,22 +111,20 @@ public class MovieDatabase {
     }
 
     /**
-     * Load credits from CSV with CSVReader
+     * Loads cast and crew data from a TMDB credits CSV file.
+     * Updates existing movies with actor and crew information.
      *
-     * @param filePath Credits CSV file path
-     * @throws IOException If file reading fails
+     * @param filePath Path to the credits CSV file
+     * @throws IOException if the file cannot be read
      */
     public void loadCreditsFromCSV(String filePath) throws IOException {
-        if (DEBUG_MODE) {
+        if (debugMode) {
             System.out.println("DEBUG: Starting to load credits from " + filePath);
         }
 
+        // Create a map from movie ID to Movie object for quick lookup
         Map<Integer, Movie> movieMap = movies.stream()
                 .collect(Collectors.toMap(Movie::getId, m -> m));
-
-        if (DEBUG_MODE) {
-            System.out.println("DEBUG: Created movie map with " + movieMap.size() + " movies");
-        }
 
         int processed = 0;
         int successful = 0;
@@ -133,27 +137,26 @@ public class MovieDatabase {
             while ((line = br.readLine()) != null) {
                 if (isFirstLine) {
                     isFirstLine = false;
-                    continue; // Skip header
+                    continue; // Skip CSV header
                 }
 
                 processed++;
 
                 try {
-                    // 简单的CSV解析 - 更健壮的方式
                     String[] parts = parseCSVLine(line);
 
                     if (parts.length < 4) {
                         errorCount++;
-                        continue;
+                        continue; // Skip malformed lines
                     }
 
                     int movieId = Integer.parseInt(parts[0]);
                     Movie movie = movieMap.get(movieId);
                     if (movie == null) {
-                        continue;
+                        continue; // Skip if movie not in our dataset
                     }
 
-                    // Parse cast (column 2)
+                    // Parse cast data and store top 5 actors
                     String castJson = parts[2];
                     if (castJson != null && !castJson.trim().isEmpty()) {
                         try {
@@ -166,13 +169,13 @@ public class MovieDatabase {
                             movie.setActors(actors);
                         } catch (JSONException e) {
                             errorCount++;
-                            if (DEBUG_MODE) {
+                            if (debugMode) {
                                 System.out.println("DEBUG: JSON error for cast: " + e.getMessage());
                             }
                         }
                     }
 
-                    // Parse crew (column 3)
+                    // Parse crew data and categorize by job title
                     String crewJson = parts[3];
                     if (crewJson != null && !crewJson.trim().isEmpty()) {
                         try {
@@ -186,12 +189,24 @@ public class MovieDatabase {
                                 String job = crewMember.getString("job");
                                 String name = crewMember.getString("name");
                                 switch (job) {
-                                    case "Director" -> directors.add(name);
-                                    case "Writer" -> writers.add(name);
-                                    case "Original Music Composer" -> composers.add(name);
+                                    case "Director": {
+                                        directors.add(name);
+                                        break;
+                                    }
+                                    case "Writer": {
+                                        writers.add(name);
+                                        break;
+                                    }
+                                    case "Original Music Composer": {
+                                        composers.add(name);
+                                        break;
+                                    }
+                                    default:
+                                        break;
                                 }
                             }
 
+                            // Assign crew data to the movie
                             movie.setDirectors(directors);
                             movie.setWriters(writers);
                             movie.setComposers(composers);
@@ -199,21 +214,22 @@ public class MovieDatabase {
                             successful++;
                         } catch (JSONException e) {
                             errorCount++;
-                            if (DEBUG_MODE) {
+                            if (debugMode) {
                                 System.out.println("DEBUG: JSON error for crew: " + e.getMessage());
                             }
                         }
                     }
                 } catch (Exception e) {
                     errorCount++;
-                    if (DEBUG_MODE) {
-                        System.err.println("DEBUG: Error processing line " + processed + ": " + e.getMessage());
+                    if (debugMode) {
+                        System.err.println("DEBUG: Error processing line "
+                                + processed + ": " + e.getMessage());
                     }
                 }
             }
         }
 
-        if (DEBUG_MODE) {
+        if (debugMode) {
             System.out.println("DEBUG: Finished loading credits");
             System.out.println("DEBUG: Processed " + processed + " lines");
             System.out.println("DEBUG: Successfully processed " + successful + " movies");
@@ -222,7 +238,11 @@ public class MovieDatabase {
     }
 
     /**
-     * 简单的CSV行解析方法，更健壮地处理引号
+     * Parses a single CSV line with support for quoted strings.
+     * CSV line parsing logic adapted from a common quoted-string handling
+     * pattern suggested by ChatGPT.
+     * @param line A raw CSV line
+     * @return Array of fields split from the line
      */
     private String[] parseCSVLine(String line) {
         List<String> result = new ArrayList<>();
@@ -242,14 +262,12 @@ public class MovieDatabase {
             }
         }
 
-        // 添加最后一个字段
         result.add(current.toString());
-
         return result.toArray(new String[0]);
     }
 
     /**
-     * Get all movies in the database
+     * Returns all movies in the database.
      *
      * @return List of all movies
      */
@@ -258,10 +276,10 @@ public class MovieDatabase {
     }
 
     /**
-     * Find movie by ID
+     * Finds a movie by its TMDB ID.
      *
      * @param id Movie ID
-     * @return Found movie, or null if not found
+     * @return Movie if found, otherwise null
      */
     public Movie findMovieById(int id) {
         for (Movie movie : movies) {
@@ -273,10 +291,10 @@ public class MovieDatabase {
     }
 
     /**
-     * Find movies by title
+     * Searches for movies with titles containing the given string.
      *
-     * @param title Movie title
-     * @return List of movies matching the title
+     * @param title Partial or full movie title
+     * @return List of matching movies
      */
     public List<Movie> findMoviesByTitle(String title) {
         String searchTitle = title.toLowerCase();
@@ -286,11 +304,11 @@ public class MovieDatabase {
     }
 
     /**
-     * Find movies by title prefix (for autocomplete)
+     * Searches for movies by title prefix (used in autocomplete).
      *
-     * @param prefix Title prefix
-     * @param maxResults Maximum number of results
-     * @return List of movies matching the prefix
+     * @param prefix Prefix of the movie title
+     * @param maxResults Max number of suggestions to return
+     * @return List of suggested movies
      */
     public List<Movie> findMoviesByTitlePrefix(String prefix, int maxResults) {
         if (prefix == null || prefix.isEmpty()) {
@@ -298,7 +316,10 @@ public class MovieDatabase {
         }
 
         String searchPrefix = prefix.toLowerCase();
-        List<Movie> results = titlePrefixIndex.getOrDefault(searchPrefix.substring(0, Math.min(searchPrefix.length(), 5)), new ArrayList<>())
+        List<Movie> results =
+                titlePrefixIndex.getOrDefault(searchPrefix.substring(0,
+                                        Math.min(searchPrefix.length(), 5)),
+                                new ArrayList<>())
                 .stream()
                 .filter(m -> m.getTitle().toLowerCase().startsWith(searchPrefix))
                 .limit(maxResults)
@@ -308,9 +329,9 @@ public class MovieDatabase {
     }
 
     /**
-     * Find movies by genre
+     * Retrieves all movies matching a given genre.
      *
-     * @param genre Movie genre
+     * @param genre Genre name
      * @return List of movies in that genre
      */
     public List<Movie> findMoviesByGenre(String genre) {
@@ -318,18 +339,18 @@ public class MovieDatabase {
     }
 
     /**
-     * Get all genres in the database
+     * Returns all unique genres found in the dataset.
      *
-     * @return Set of all genres
+     * @return Set of genre strings
      */
     public Set<String> getAllGenres() {
         return new HashSet<>(genreIndex.keySet());
     }
 
     /**
-     * Get a random movie
+     * Returns a random movie from the database.
      *
-     * @return Randomly selected movie
+     * @return Random movie object, or null if no movies exist
      */
     public Movie getRandomMovie() {
         if (movies.isEmpty()) {
