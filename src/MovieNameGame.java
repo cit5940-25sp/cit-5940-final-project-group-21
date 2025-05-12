@@ -8,11 +8,17 @@ import main.view.TerminalGameUI;
 import java.io.IOException;
 
 /**
- * Main application class for the Movie Name Game.
- * Initializes game components and starts the terminal-based UI.
+ * The main application class for the Movie Name Game.
+ * Initializes all components including the database and controllers, then launches the TUI.
+ * This game is based on the cine2nerdle.app battle mode, using movie data from TMDB.
+ *
+ * @author Group 21
+ * @version May 12, 2025
  */
 public class MovieNameGame {
+    // Path to the TMDB 5000 movie dataset file.
     private static final String MOVIE_FILE_PATH   = "data/tmdb_5000_movies.csv";
+    // Path to the TMDB 5000 credits dataset file.
     private static final String CREDITS_FILE_PATH = "data/tmdb_5000_credits.csv";
 
     private final MovieDatabase movieDatabase;
@@ -20,23 +26,20 @@ public class MovieNameGame {
     private final AutocompleteController autocompleteController;
 
     /**
-     * Constructor:
+     * Constructs the MovieNameGame instance.
+     * Initializes the movie database and controllers, and loads movie data from file.
      */
     public MovieNameGame() {
         movieDatabase = new MovieDatabase();
         gameController = new GameController(movieDatabase);
         autocompleteController = new AutocompleteController(movieDatabase);
-
-        // 加载电影与演员表数据
         gameController.initialize(MOVIE_FILE_PATH, CREDITS_FILE_PATH);
-
-        // 正确方式: 游戏初始状态为等待玩家
-        // 将这行移到 GameController 的初始化中，它已经在构造函数中创建了 GameState
-        // 不需要额外设置
     }
 
     /**
-     * 启动 TUI 界面，接管整个游戏流程。
+     * Starts the terminal-based user interface and begins the game.
+     *
+     * @throws IOException if the terminal screen cannot be initialized
      */
     public void start() throws IOException {
         TerminalGameUI tui = new TerminalGameUI(gameController, autocompleteController);
@@ -44,7 +47,10 @@ public class MovieNameGame {
     }
 
     /**
-     * 程序入口。
+     * Launches the Movie Name Game application.
+     *
+     * @param args command-line arguments (not used)
+     * @throws IOException if TUI fails to launch
      */
     public static void main(String[] args) throws IOException {
         MovieNameGame app = new MovieNameGame();
