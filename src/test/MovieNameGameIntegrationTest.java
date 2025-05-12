@@ -1,4 +1,4 @@
-package main.Test;
+package main.test;
 
 import main.controller.AutocompleteController;
 import main.controller.GameController;

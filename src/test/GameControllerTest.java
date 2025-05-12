@@ -1,4 +1,4 @@
-package main.Test;
+package main.test;
 
 import main.controller.GameController;
 import main.model.GameState;
@@ -14,7 +14,16 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
-
+/**
+ * Unit tests for the GameController class.
+ * Validates game logic behaviors including player management, movie selection,
+ * timer handling, and game state transitions.
+ *
+ * Uses test CSV files to simulate loading movie and credit data.
+ *
+ * @author Group 21
+ * @version May 12, 2025
+ */
 public class GameControllerTest {
 
     private MovieDatabase movieDatabase;

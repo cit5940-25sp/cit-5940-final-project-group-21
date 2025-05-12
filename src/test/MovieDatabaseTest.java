@@ -1,4 +1,4 @@
-package main.Test;
+package main.test;
 
 import main.model.Movie;
 import main.model.MovieDatabase;
