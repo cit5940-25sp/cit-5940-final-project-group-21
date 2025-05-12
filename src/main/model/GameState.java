@@ -284,7 +284,6 @@ public class GameState {
 
     public void setCurrentPlayer(Player p) { this.currentPlayer = p; }
 
-    /** 切换到下一个玩家 */
     public void switchToNextPlayer() {
         currentPlayer = (currentPlayer == player1) ? player2 : player1;
     }

@@ -20,7 +20,7 @@ public class MovieNameGame {
     private final AutocompleteController autocompleteController;
 
     /**
-     * Constructor: 初始化模型和控制器，并加载数据。
+     * Constructor:
      */
     public MovieNameGame() {
         movieDatabase = new MovieDatabase();
