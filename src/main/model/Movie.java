@@ -1,4 +1,3 @@
-
 package main.model;
 
 import java.util.ArrayList;
@@ -20,6 +19,7 @@ public class Movie {
     private List<String> directors;
     private List<String> writers;
     private List<String> composers;
+
     /**
      * Constructor for the Movie class
      *
@@ -83,34 +83,75 @@ public class Movie {
         }
         return "Unknown";
     }
+
+    /**
+     * Get the list of actors
+     *
+     * @return List of actors
+     */
     public List<String> getActors() {
         return new ArrayList<>(actors);
     }
 
+    /**
+     * Get the list of directors
+     *
+     * @return List of directors
+     */
     public List<String> getDirectors() {
         return new ArrayList<>(directors);
     }
 
+    /**
+     * Get the list of writers
+     *
+     * @return List of writers
+     */
     public List<String> getWriters() {
         return new ArrayList<>(writers);
     }
 
+    /**
+     * Get the list of composers
+     *
+     * @return List of composers
+     */
     public List<String> getComposers() {
         return new ArrayList<>(composers);
     }
 
+    /**
+     * Set the list of actors
+     *
+     * @param actors List of actors
+     */
     public void setActors(List<String> actors) {
         this.actors = new ArrayList<>(actors);
     }
 
+    /**
+     * Set the list of directors
+     *
+     * @param directors List of directors
+     */
     public void setDirectors(List<String> directors) {
         this.directors = new ArrayList<>(directors);
     }
 
+    /**
+     * Set the list of writers
+     *
+     * @param writers List of writers
+     */
     public void setWriters(List<String> writers) {
         this.writers = new ArrayList<>(writers);
     }
 
+    /**
+     * Set the list of composers
+     *
+     * @param composers List of composers
+     */
     public void setComposers(List<String> composers) {
         this.composers = new ArrayList<>(composers);
     }

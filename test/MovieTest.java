@@ -1,6 +1,6 @@
 package test;
 
-import model.Movie;
+import main.model.Movie;
 import org.junit.Test;
 
 import java.util.Arrays;

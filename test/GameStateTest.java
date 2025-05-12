@@ -1,9 +1,9 @@
 
 package test;
 
-import model.GameState;
-import model.Movie;
-import model.Player;
+import main.model.GameState;
+import main.model.Movie;
+import main.model.Player;
 import org.junit.Before;
 import org.junit.Test;
 
