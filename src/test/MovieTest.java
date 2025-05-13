@@ -45,7 +45,7 @@ public class MovieTest {
     public void testGetReleaseYear() {
         // Arrange & Act
         Movie movie1 = new Movie(1, "Movie 1", "2023-04-15", Arrays.asList("Action"), "", 0);
-        Movie movie2 = new Movie(2, "Movie 2", "20", Arrays.asList("Comedy"), "", 0); // 长度<4
+        Movie movie2 = new Movie(2, "Movie 2", "20", Arrays.asList("Comedy"), "", 0);
         Movie movie3 = new Movie(3, "Movie 3", null, Arrays.asList("Drama"), "", 0);
 
         // Assert

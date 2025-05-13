@@ -30,7 +30,7 @@ public class GameControllerTest {
     private GameController gameController;
     private Movie testMovie;
     private final String testMoviesCsv = "test_movies_gc.csv";
-    private final String testCredutsCsv = "test_credits_gc.csv";
+    private final String testCreditsCsv = "test_credits_gc.csv";
 
     @Before
     public void setUp() {
@@ -73,7 +73,7 @@ public class GameControllerTest {
         }
 
         // Create a simple credits CSV file for testing
-        try (FileWriter writer = new FileWriter(testCredutsCsv)) {
+        try (FileWriter writer = new FileWriter(testCreditsCsv)) {
             // Header
             writer.write("movie_id,title,cast,crew\n");
             // Test movie 1 credits
@@ -210,7 +210,7 @@ public class GameControllerTest {
     public void testInitialize() {
         try {
             // Act
-            gameController.initialize(testMoviesCsv, testCredutsCsv);
+            gameController.initialize(testMoviesCsv, testCreditsCsv);
 
             // Assert
             List<Movie> allMovies = movieDatabase.getAllMovies();
@@ -254,7 +254,7 @@ public class GameControllerTest {
     public void testGetRandomMovie() {
         try {
             // Arrange
-            gameController.initialize(testMoviesCsv, testCredutsCsv);
+            gameController.initialize(testMoviesCsv, testCreditsCsv);
 
             // Act
             Movie randomMovie = gameController.getRandomMovie();
@@ -271,7 +271,7 @@ public class GameControllerTest {
     public void testSelectMovieByGenre() {
         try {
             // Arrange
-            gameController.initialize(testMoviesCsv, testCredutsCsv);
+            gameController.initialize(testMoviesCsv, testCreditsCsv);
             gameController.addPlayer("Player 1");
             gameController.addPlayer("Player 2");
 
@@ -301,7 +301,7 @@ public class GameControllerTest {
     public void testSelectMovieByPersonAutoDetect() {
         try {
             // Arrange
-            gameController.initialize(testMoviesCsv, testCredutsCsv);
+            gameController.initialize(testMoviesCsv,testCreditsCsv);
             gameController.addPlayer("Player 1");
             gameController.addPlayer("Player 2");
 
